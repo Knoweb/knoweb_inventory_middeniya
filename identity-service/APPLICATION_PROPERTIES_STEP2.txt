@@ -1,0 +1,72 @@
+# APPLICATION PROPERTIES FOR STEP 2
+# Add these configurations to identity-service/src/main/resources/application.properties
+
+# ============================================================
+# IDENTITY DATABASE CONFIGURATION (Primary DataSource)
+# ============================================================
+spring.datasource.url=jdbc:mysql://localhost:3306/identity_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=1234
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# JPA Configuration
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+spring.jpa.properties.hibernate.format_sql=true
+
+# ============================================================
+# SUBSCRIPTION DATABASE CONFIGURATION (Secondary DataSource)
+# ============================================================
+subscription.datasource.url=jdbc:mysql://localhost:3306/subscription_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+subscription.datasource.username=root
+subscription.datasource.password=1234
+subscription.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# ============================================================
+# SYSTEM ENDPOINT CONFIGURATIONS
+# ============================================================
+# Ginuma ERP System
+system.ginuma.setup.url=http://localhost:8081/api/tenant/setup
+system.ginuma.frontend.url=http://localhost:5176/login
+
+# Inventory System
+system.inventory.setup.url=http://localhost:8086/api/users/org/setup
+system.inventory.frontend.url=http://localhost:5174/login
+
+# ============================================================
+# REST TEMPLATE CONFIGURATION
+# ============================================================
+rest.template.connect.timeout=10000
+rest.template.read.timeout=30000
+
+# ============================================================
+# TRIAL CONFIGURATION
+# ============================================================
+registration.trial.days=14
+registration.trial.enabled=true
+
+# ============================================================
+# SERVER CONFIGURATION
+# ============================================================
+server.port=8088
+
+# ============================================================
+# CORS CONFIGURATION
+# ============================================================
+cors.allowed.origins=http://localhost:5173,http://localhost:3000,http://localhost:5176,http://localhost:5174
+
+# ============================================================
+# LOGGING
+# ============================================================
+logging.level.com.inventory.identity=DEBUG
+logging.level.org.springframework.web=INFO
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+
+# ============================================================
+# JWT CONFIGURATION (If needed)
+# ============================================================
+jwt.secret=your-secret-key-here
+jwt.expiration=3600000
+jwt.refresh.expiration=604800000

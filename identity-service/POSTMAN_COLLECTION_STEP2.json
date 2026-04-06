@@ -1,0 +1,129 @@
+{
+  "info": {
+    "name": "Unified Registration API - Step 2",
+    "description": "Test collection for Unified SSO Registration Flow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8088/api/auth/register/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8088",
+          "path": ["api", "auth", "register", "health"]
+        }
+      }
+    },
+    {
+      "name": "Get Available Systems",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8088/api/auth/register/systems",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8088",
+          "path": ["api", "auth", "register", "systems"]
+        }
+      }
+    },
+    {
+      "name": "Register - Ginuma System",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyName\": \"Acme Corporation\",\n  \"email\": \"admin@acme.com\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+1234567890\",\n  \"selectedSystem\": \"GINUMA\",\n  \"address\": \"123 Main Street\",\n  \"city\": \"New York\",\n  \"country\": \"USA\",\n  \"industry\": \"Technology\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8088/api/auth/register/unified",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8088",
+          "path": ["api", "auth", "register", "unified"]
+        }
+      }
+    },
+    {
+      "name": "Register - Inventory System",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyName\": \"TechStore Inc\",\n  \"email\": \"admin@techstore.com\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"phoneNumber\": \"+1987654321\",\n  \"selectedSystem\": \"INVENTORY\",\n  \"branchName\": \"Main Warehouse\",\n  \"branchCode\": \"WH01\",\n  \"address\": \"456 Commerce Blvd\",\n  \"city\": \"Los Angeles\",\n  \"country\": \"USA\",\n  \"industry\": \"Retail\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8088/api/auth/register/unified",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8088",
+          "path": ["api", "auth", "register", "unified"]
+        }
+      }
+    },
+    {
+      "name": "Register - Duplicate Email (Should Fail)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyName\": \"Duplicate Corp\",\n  \"email\": \"admin@acme.com\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"selectedSystem\": \"GINUMA\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8088/api/auth/register/unified",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8088",
+          "path": ["api", "auth", "register", "unified"]
+        }
+      }
+    },
+    {
+      "name": "Register - Minimal Data",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyName\": \"Minimal Corp\",\n  \"email\": \"minimal@test.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Min\",\n  \"lastName\": \"User\",\n  \"selectedSystem\": \"GINUMA\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8088/api/auth/register/unified",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8088",
+          "path": ["api", "auth", "register", "unified"]
+        }
+      }
+    }
+  ]
+}
