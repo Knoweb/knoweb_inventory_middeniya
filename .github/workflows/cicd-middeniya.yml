@@ -31,6 +31,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Java 17
+        if: matrix.service != 'inventory-frontend'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build backend service with Maven
+        if: matrix.service != 'inventory-frontend'
+        working-directory: ./${{ matrix.service }}
+        run: mvn -B -DskipTests package
+
+      - name: Set up Node 18
+        if: matrix.service == 'inventory-frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build frontend (inventory-frontend)
+        if: matrix.service == 'inventory-frontend'
+        working-directory: ./inventory-frontend
+        run: |
+          npm ci
+          npm run build
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
