@@ -104,5 +104,5 @@ jobs:
             set -e
             cd ${{ secrets.DO_APP_PATH }}
             export DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-            docker-compose -f docker-compose.middeniya.yml pull
-            docker-compose -f docker-compose.middeniya.yml up -d --remove-orphans
+            docker compose -f docker-compose.middeniya.yml pull
+            docker compose -f docker-compose.middeniya.yml up -d --remove-orphans
