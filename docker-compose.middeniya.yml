@@ -1,0 +1,202 @@
+services:
+  mysql:
+    image: mysql:8
+    container_name: middeniya-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: knoweb_admin_2026
+    restart: unless-stopped
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - app-network
+
+  service-discovery:
+    image: ${DOCKER_USERNAME}/service-discovery:middeniya
+    container_name: middeniya-service-discovery
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    ports:
+      - "8761:8761"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  product-service:
+    image: ${DOCKER_USERNAME}/product-service:middeniya
+    container_name: middeniya-product-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/product_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  inventory-service:
+    image: ${DOCKER_USERNAME}/inventory-service:middeniya
+    container_name: middeniya-inventory-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/inventory_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  order-service:
+    image: ${DOCKER_USERNAME}/order-service:middeniya
+    container_name: middeniya-order-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/order_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+      - INVENTORY_SERVICE_URL=http://inventory-service:8082
+    depends_on:
+      - mysql
+      - service-discovery
+      - inventory-service
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  warehouse-service:
+    image: ${DOCKER_USERNAME}/warehouse-service:middeniya
+    container_name: middeniya-warehouse-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/warehouse_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+      - USER_SERVICE_URL=http://user-service:8086
+    depends_on:
+      - mysql
+      - service-discovery
+      - user-service
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  supplier-service:
+    image: ${DOCKER_USERNAME}/supplier-service:middeniya
+    container_name: middeniya-supplier-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/supplier_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  user-service:
+    image: ${DOCKER_USERNAME}/user-service:middeniya
+    container_name: middeniya-user-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/user_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  notification-service:
+    image: ${DOCKER_USERNAME}/notification-service:middeniya
+    container_name: middeniya-notification-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/notification_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  catalog-service:
+    image: ${DOCKER_USERNAME}/catalog-service:middeniya
+    container_name: middeniya-catalog-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/catalog_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  reporting-service:
+    image: ${DOCKER_USERNAME}/reporting-service:middeniya
+    container_name: middeniya-reporting-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/reporting_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  api-gateway:
+    image: ${DOCKER_USERNAME}/api-gateway:middeniya
+    container_name: middeniya-api-gateway
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+    ports:
+      - "8080:8080"
+    depends_on:
+      - service-discovery
+      - product-service
+      - inventory-service
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  inventory-frontend:
+    image: ${DOCKER_USERNAME}/inventory-frontend:middeniya
+    container_name: middeniya-inventory-frontend
+    ports:
+      - "3002:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
