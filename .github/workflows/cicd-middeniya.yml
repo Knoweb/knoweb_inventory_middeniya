@@ -17,6 +17,7 @@ jobs:
         service:
           - api-gateway
           - service-discovery
+          - identity-service
           - product-service
           - inventory-service
           - order-service
