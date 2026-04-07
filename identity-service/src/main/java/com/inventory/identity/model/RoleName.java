@@ -10,5 +10,11 @@ public enum RoleName {
     ROLE_PROCUREMENT,      // Supplier and purchasing
     ROLE_ACCOUNTANT,       // Financial reports
     ROLE_AUDITOR,          // Read-only audit access
-    ROLE_USER              // Basic user
+    ROLE_USER,             // Basic user
+
+    // --- Manufacturing specific roles (Middeniya) ---
+    ROLE_INV_STOCK_KEEPER, // Stock management
+    ROLE_INV_MOLDING,      // Molding department
+    ROLE_INV_QC,           // Quality Control
+    ROLE_INV_ASSEMBLE      // Assembly line
 }
