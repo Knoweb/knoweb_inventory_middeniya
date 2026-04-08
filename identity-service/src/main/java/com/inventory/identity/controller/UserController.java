@@ -36,7 +36,7 @@ public class UserController {
     }
     
     @GetMapping("/organization/{orgId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ORG_ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ORG_ADMIN', 'MANAGER', 'COMPANY', 'INV_QC', 'INV_STOCK_KEEPER', 'INV_MOLDING', 'INV_ASSEMBLE')")
     public ResponseEntity<List<UserResponse>> getUsersByOrganization(@PathVariable Long orgId) {
         return ResponseEntity.ok(userService.getUsersByOrganization(orgId));
     }
