@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import SsoReceiver from './components/Auth/SsoReceiver';
+import RoleGuard from './components/guards/RoleGuard';
 import GlobalLogout from './pages/GlobalLogout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -24,6 +25,12 @@ import Analytics from './pages/Analytics';
 import StockLedgerValuation from './pages/StockLedgerValuation';
 import CompanyProfile from './pages/CompanyProfile';
 import Sidebar from './components/Sidebar';
+
+import StoresDashboard from './pages/stores/Dashboard';
+import MoldingDashboard from './pages/molding/Dashboard';
+import AssembleDashboard from './pages/assemble/Dashboard';
+import PrimaryDashboard from './pages/primary/Dashboard';
+import QCDashboard from './pages/qc/Dashboard';
 
 function AppContent() {
   const { user } = useAuth();
@@ -61,6 +68,32 @@ function AppContent() {
                   <Route path="/catalog/settings" element={<CatalogSettings />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/stock-ledger" element={<StockLedgerValuation />} />
+                  
+                  {/* Middeniya Manufacturing Layouts */}
+                  {/* Stock Keeper / Stores Guard */}
+                  <Route element={<RoleGuard allowedRoles={['ROLE_INV_STOCK_KEEPER', 'ROLE_STOCK_KEEPER', 'ROLE_PROCUREMENT']} />}>
+                    <Route path="/stores" element={<StoresDashboard />} />
+                  </Route>
+
+                  {/* Injection Molding Guard */}
+                  <Route element={<RoleGuard allowedRoles={['ROLE_INV_MOLDING', 'ROLE_INJECTION_MOLDING']} />}>
+                    <Route path="/molding" element={<MoldingDashboard />} />
+                  </Route>
+
+                  {/* Assemble Guard */}
+                  <Route element={<RoleGuard allowedRoles={['ROLE_INV_ASSEMBLE', 'ROLE_ASSEMBLE']} />}>
+                    <Route path="/assemble" element={<AssembleDashboard />} />
+                  </Route>
+
+                  {/* Primary Finishing Guard */}
+                  <Route element={<RoleGuard allowedRoles={['ROLE_INV_PRIMARY', 'ROLE_PRIMARY']} />}>
+                    <Route path="/primary" element={<PrimaryDashboard />} />
+                  </Route>
+
+                  {/* QC (Quality Control) Guard */}
+                  <Route element={<RoleGuard allowedRoles={['ROLE_INV_QC', 'ROLE_QC']} />}>
+                    <Route path="/qc" element={<QCDashboard />} />
+                  </Route>
                 </Routes>
               </main>
             </div>
