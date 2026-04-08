@@ -12,6 +12,7 @@ const SsoReceiver = () => {
     const orgId = searchParams.get('orgId');
     const tenantId = searchParams.get('tenantId');
     const branchId = searchParams.get('branchId');
+    const redirectTo = searchParams.get('redirectTo') || '/';
 
     if (token) {
       // Save authentication data to localStorage
@@ -40,11 +41,11 @@ const SsoReceiver = () => {
       // Store timestamp for session management
       localStorage.setItem('knoweb_loginTime', new Date().toISOString());
 
-      console.log('SSO: Token received and stored successfully');
+      console.log('SSO: Token received and stored successfully. Redirecting to:', redirectTo);
 
-      // Redirect to dashboard after successful SSO (root path renders Dashboard)
+      // Redirect to dashboard or specific path after successful SSO
       setTimeout(() => {
-        navigate('/', { replace: true });
+        navigate(redirectTo, { replace: true });
       }, 500);
     } else {
       // No token found, redirect to Main Dashboard login
