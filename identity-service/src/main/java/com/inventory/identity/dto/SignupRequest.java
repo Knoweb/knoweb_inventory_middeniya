@@ -20,6 +20,12 @@ public class SignupRequest {
     private String firstName;
     private String lastName;
     private String phoneNumber;
+    
+    // Organization ID (for assigning user to existing organization)
+    private Long orgId;
+    
+    // System Role (e.g., ROLE_INV_STOCK_KEEPER, ROLE_INV_MOLDING, etc.)
+    private String role;
 
     // Industry Type Selection
     @NotBlank(message = "Industry type is required")

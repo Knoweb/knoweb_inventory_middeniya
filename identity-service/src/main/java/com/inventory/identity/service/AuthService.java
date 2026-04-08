@@ -155,120 +155,132 @@ public class AuthService {
             throw new RuntimeException("Error: Email is already in use!");
         }
 
-        // Step 1: Create Organization via user-service
-        Map<String, Object> organizationRequest = new HashMap<>();
-        organizationRequest.put("name", signupRequest.getCompanyName());
-        organizationRequest.put("industryType", signupRequest.getIndustryType().toUpperCase());
-        organizationRequest.put("tenantId", "TENANT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        organizationRequest.put("contactEmail",
-                signupRequest.getContactEmail() != null ? signupRequest.getContactEmail() : signupRequest.getEmail());
-        organizationRequest.put("contactPhone",
-                signupRequest.getContactPhone() != null ? signupRequest.getContactPhone()
-                        : signupRequest.getPhoneNumber());
-        organizationRequest.put("mobileNumber", signupRequest.getMobileNumber());
-        organizationRequest.put("website", signupRequest.getWebsite());
-        organizationRequest.put("registeredAddress", signupRequest.getRegisteredAddress());
-        organizationRequest.put("factoryAddress", signupRequest.getFactoryAddress());
-        organizationRequest.put("country", signupRequest.getCountry());
-        organizationRequest.put("currency", signupRequest.getCurrency());
-        organizationRequest.put("registrationNo", signupRequest.getRegistrationNo());
-        organizationRequest.put("tinNo", signupRequest.getTinNo());
-        organizationRequest.put("isVatRegistered", signupRequest.isVatRegistered());
-        organizationRequest.put("vatNo", signupRequest.getVatNo());
-        organizationRequest.put("logoUrl", signupRequest.getCompanyLogo());
-        organizationRequest.put("subscriptionTier", "STARTER");
-        organizationRequest.put("isActive", true);
-
         Long orgId = null;
-        try {
-            ResponseEntity<Map> orgResponse = restTemplate.postForEntity(
-                    "http://user-service/api/organizations",
-                    organizationRequest,
-                    Map.class);
+        
+        // Check if orgId is provided (existing organization scenario - e.g., Middeniya)
+        if (signupRequest.getOrgId() != null) {
+            orgId = signupRequest.getOrgId();
+            System.out.println("✅ Using existing organization: " + orgId);
+        } else {
+            // Create new organization via user-service
+            Map<String, Object> organizationRequest = new HashMap<>();
+            organizationRequest.put("name", signupRequest.getCompanyName());
+            organizationRequest.put("industryType", signupRequest.getIndustryType().toUpperCase());
+            organizationRequest.put("tenantId", "TENANT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+            organizationRequest.put("contactEmail",
+                    signupRequest.getContactEmail() != null ? signupRequest.getContactEmail() : signupRequest.getEmail());
+            organizationRequest.put("contactPhone",
+                    signupRequest.getContactPhone() != null ? signupRequest.getContactPhone()
+                            : signupRequest.getPhoneNumber());
+            organizationRequest.put("mobileNumber", signupRequest.getMobileNumber());
+            organizationRequest.put("website", signupRequest.getWebsite());
+            organizationRequest.put("registeredAddress", signupRequest.getRegisteredAddress());
+            organizationRequest.put("factoryAddress", signupRequest.getFactoryAddress());
+            organizationRequest.put("country", signupRequest.getCountry());
+            organizationRequest.put("currency", signupRequest.getCurrency());
+            organizationRequest.put("registrationNo", signupRequest.getRegistrationNo());
+            organizationRequest.put("tinNo", signupRequest.getTinNo());
+            organizationRequest.put("isVatRegistered", signupRequest.isVatRegistered());
+            organizationRequest.put("vatNo", signupRequest.getVatNo());
+            organizationRequest.put("logoUrl", signupRequest.getCompanyLogo());
+            organizationRequest.put("subscriptionTier", "STARTER");
+            organizationRequest.put("isActive", true);
 
-            if (orgResponse.getBody() != null && orgResponse.getBody().get("id") != null) {
-                orgId = Long.valueOf(orgResponse.getBody().get("id").toString());
-            }
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
-            System.err.println("Failed to create organization. Status: " + e.getStatusCode());
-            System.err.println("Response body: " + e.getResponseBodyAsString());
-            throw new RuntimeException("Error: Failed to create organization. " + e.getResponseBodyAsString());
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error: Failed to create organization. " + e.getMessage());
-        }
+            try {
+                ResponseEntity<Map> orgResponse = restTemplate.postForEntity(
+                        "http://user-service/api/organizations",
+                        organizationRequest,
+                        Map.class);
 
-        if (orgId == null) {
-            throw new RuntimeException("Error: Failed to get organization ID!");
-        }
-
-        // ===== STEP 1.5: Register with Subscription Service (12-month trial) =====
-        try {
-            String contactEmail = signupRequest.getContactEmail() != null 
-                    ? signupRequest.getContactEmail() 
-                    : signupRequest.getEmail();
-            
-            SubscriptionRegisterRequest subscriptionRequest = SubscriptionRegisterRequest.builder()
-                    .orgId(orgId)
-                    .companyName(signupRequest.getCompanyName())
-                    .contactEmail(contactEmail)
-                    .build();
-            
-            System.out.println("📝 Registering organization " + orgId + " with subscription-service (12-month trial)...");
-            
-            ResponseEntity<Map> subscriptionResponse = restTemplate.postForEntity(
-                    "http://subscription-service/api/internal/subscriptions/register",
-                    subscriptionRequest,
-                    Map.class);
-            
-            if (subscriptionResponse.getStatusCode().is2xxSuccessful()) {
-                System.out.println("✅ Successfully registered with subscription-service: orgId=" + orgId);
-                if (subscriptionResponse.getBody() != null) {
-                    System.out.println("   Trial Status: 12-month trial activated for GINUMA and INVENTORY");
-                    System.out.println("   Company Status: ACTIVE");
+                if (orgResponse.getBody() != null && orgResponse.getBody().get("id") != null) {
+                    orgId = Long.valueOf(orgResponse.getBody().get("id").toString());
                 }
-            } else {
-                System.err.println("⚠️ Subscription service returned non-success status: " + subscriptionResponse.getStatusCode());
-                throw new SubscriptionRegistrationException(
-                        "Failed to register with subscription service. Status: " + subscriptionResponse.getStatusCode(),
-                        orgId);
+            } catch (org.springframework.web.client.HttpClientErrorException e) {
+                System.err.println("Failed to create organization. Status: " + e.getStatusCode());
+                System.err.println("Response body: " + e.getResponseBodyAsString());
+                throw new RuntimeException("Error: Failed to create organization. " + e.getResponseBodyAsString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException("Error: Failed to create organization. " + e.getMessage());
             }
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
-            System.err.println("❌ HTTP Error registering with subscription-service:");
-            System.err.println("   Status: " + e.getStatusCode());
-            System.err.println("   Response: " + e.getResponseBodyAsString());
-            System.err.println("   OrgId: " + orgId);
-            
-            // This is a CRITICAL error - rollback registration
-            throw new SubscriptionRegistrationException(
-                    "Failed to register with subscription service: " + e.getMessage() + 
-                    ". Status: " + e.getStatusCode() + ". Response: " + e.getResponseBodyAsString(),
-                    orgId,
-                    e);
-        } catch (org.springframework.web.client.ResourceAccessException e) {
-            System.err.println("❌ Subscription-service is unreachable or down:");
-            System.err.println("   Error: " + e.getMessage());
-            System.err.println("   OrgId: " + orgId);
-            
-            // Service is down - this is CRITICAL, rollback registration
-            throw new SubscriptionRegistrationException(
-                    "Subscription service is currently unavailable. Please try again later. OrgId: " + orgId,
-                    orgId,
-                    e);
-        } catch (SubscriptionRegistrationException e) {
-            // Re-throw our custom exception
-            throw e;
-        } catch (Exception e) {
-            System.err.println("❌ Unexpected error registering with subscription-service:");
-            System.err.println("   Error: " + e.getMessage());
-            System.err.println("   OrgId: " + orgId);
-            e.printStackTrace();
-            
-            // Unknown error - this is CRITICAL, rollback registration
-            throw new SubscriptionRegistrationException(
-                    "Unexpected error during subscription registration: " + e.getMessage(),
-                    orgId,
-                    e);
+
+            if (orgId == null) {
+                throw new RuntimeException("Error: Failed to get organization ID!");
+            }
+        }
+
+        // ===== STEP 1.5: Register with Subscription Service (only if new organization) =====
+        // Skip if orgId was provided (existing organization already has subscription)
+        if (signupRequest.getOrgId() == null) {
+            try {
+                String contactEmail = signupRequest.getContactEmail() != null 
+                        ? signupRequest.getContactEmail() 
+                        : signupRequest.getEmail();
+                
+                SubscriptionRegisterRequest subscriptionRequest = SubscriptionRegisterRequest.builder()
+                        .orgId(orgId)
+                        .companyName(signupRequest.getCompanyName())
+                        .contactEmail(contactEmail)
+                        .build();
+                
+                System.out.println("📝 Registering NEW organization " + orgId + " with subscription-service (12-month trial)...");
+                
+                ResponseEntity<Map> subscriptionResponse = restTemplate.postForEntity(
+                        "http://subscription-service/api/internal/subscriptions/register",
+                        subscriptionRequest,
+                        Map.class);
+                
+                if (subscriptionResponse.getStatusCode().is2xxSuccessful()) {
+                    System.out.println("✅ Successfully registered with subscription-service: orgId=" + orgId);
+                    if (subscriptionResponse.getBody() != null) {
+                        System.out.println("   Trial Status: 12-month trial activated for GINUMA and INVENTORY");
+                        System.out.println("   Company Status: ACTIVE");
+                    }
+                } else {
+                    System.err.println("⚠️ Subscription service returned non-success status: " + subscriptionResponse.getStatusCode());
+                    throw new SubscriptionRegistrationException(
+                            "Failed to register with subscription service. Status: " + subscriptionResponse.getStatusCode(),
+                            orgId);
+                }
+            } catch (org.springframework.web.client.HttpClientErrorException e) {
+                System.err.println("❌ HTTP Error registering with subscription-service:");
+                System.err.println("   Status: " + e.getStatusCode());
+                System.err.println("   Response: " + e.getResponseBodyAsString());
+                System.err.println("   OrgId: " + orgId);
+                
+                // This is a CRITICAL error - rollback registration
+                throw new SubscriptionRegistrationException(
+                        "Failed to register with subscription service: " + e.getMessage() + 
+                        ". Status: " + e.getStatusCode() + ". Response: " + e.getResponseBodyAsString(),
+                        orgId,
+                        e);
+            } catch (org.springframework.web.client.ResourceAccessException e) {
+                System.err.println("❌ Subscription-service is unreachable or down:");
+                System.err.println("   Error: " + e.getMessage());
+                System.err.println("   OrgId: " + orgId);
+                
+                // Service is down - this is CRITICAL, rollback registration
+                throw new SubscriptionRegistrationException(
+                        "Subscription service is currently unavailable. Please try again later. OrgId: " + orgId,
+                        orgId,
+                        e);
+            } catch (SubscriptionRegistrationException e) {
+                // Re-throw our custom exception
+                throw e;
+            } catch (Exception e) {
+                System.err.println("❌ Unexpected error registering with subscription-service:");
+                System.err.println("   Error: " + e.getMessage());
+                System.err.println("   OrgId: " + orgId);
+                e.printStackTrace();
+                
+                // Unknown error - this is CRITICAL, rollback registration
+                throw new SubscriptionRegistrationException(
+                        "Unexpected error during subscription registration: " + e.getMessage(),
+                        orgId,
+                        e);
+            }
+        } else {
+            System.out.println("ℹ️ Skipping subscription service registration - using existing organization: " + orgId);
         }
 
         // Step 2: Create User (owner) and link to organization
@@ -283,60 +295,89 @@ public class AuthService {
         user.setOrgId(orgId);
         user.setIsActive(true);
 
-        Role ownerRole = roleRepository.findByName(RoleName.ROLE_ORG_ADMIN)
-                .orElseThrow(() -> new RuntimeException("Error: OWNER role is not found."));
-
         Set<Role> roles = new HashSet<>();
-        roles.add(ownerRole);
+        
+        // Determine which role to assign
+        if (signupRequest.getRole() != null && !signupRequest.getRole().isEmpty()) {
+            Role specifiedRole = null;
+            try {
+                // Safely convert string to RoleName enum
+                specifiedRole = roleRepository.findByName(RoleName.valueOf(signupRequest.getRole()))
+                        .orElse(null);
+            } catch (IllegalArgumentException e) {
+                System.err.println("⚠️ Invalid role provided: " + signupRequest.getRole() + ", falling back to user");
+            }
+            
+            if (specifiedRole != null) {
+                roles.add(specifiedRole);
+                System.out.println("✅ Assigned role: " + signupRequest.getRole());
+            } else {
+                // Fallback to ROLE_USER if specified role not found or invalid
+                Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
+                        .orElseThrow(() -> new RuntimeException("Error: ROLE_USER is not found."));
+                roles.add(userRole);
+                System.out.println("⚠️ Specified role not found, assigned ROLE_USER");
+            }
+        } else {
+            // Default: assign ROLE_ORG_ADMIN for new organizations
+            Role ownerRole = roleRepository.findByName(RoleName.ROLE_ORG_ADMIN)
+                    .orElseThrow(() -> new RuntimeException("Error: ROLE_ORG_ADMIN role is not found."));
+            roles.add(ownerRole);
+        }
+        
         user.setRoles(roles);
 
         userRepository.save(user);
 
-        // Step 3: Sync organization to Ginuma-service
-        try {
-            Map<String, Object> syncRequest = new HashMap<>();
-            syncRequest.put("orgId", orgId);
-            syncRequest.put("orgName", signupRequest.getCompanyName());
-            syncRequest.put("email", signupRequest.getContactEmail() != null ? signupRequest.getContactEmail() : signupRequest.getEmail());
-            syncRequest.put("industryType", signupRequest.getIndustryType());
-            syncRequest.put("contactPhone", signupRequest.getContactPhone());
-            syncRequest.put("mobileNumber", signupRequest.getMobileNumber());
-            syncRequest.put("registeredAddress", signupRequest.getRegisteredAddress());
-            syncRequest.put("factoryAddress", signupRequest.getFactoryAddress());
-            syncRequest.put("registrationNo", signupRequest.getRegistrationNo());
-            syncRequest.put("vatNo", signupRequest.getVatNo());
-            syncRequest.put("tinNo", signupRequest.getTinNo());
-            syncRequest.put("isVatRegistered", signupRequest.isVatRegistered());
-            syncRequest.put("logoUrl", signupRequest.getCompanyLogo());
+        // Step 3: Sync organization to Ginuma-service (only if new organization)
+        if (signupRequest.getOrgId() == null) {
+            try {
+                Map<String, Object> syncRequest = new HashMap<>();
+                syncRequest.put("orgId", orgId);
+                syncRequest.put("orgName", signupRequest.getCompanyName());
+                syncRequest.put("email", signupRequest.getContactEmail() != null ? signupRequest.getContactEmail() : signupRequest.getEmail());
+                syncRequest.put("industryType", signupRequest.getIndustryType());
+                syncRequest.put("contactPhone", signupRequest.getContactPhone());
+                syncRequest.put("mobileNumber", signupRequest.getMobileNumber());
+                syncRequest.put("registeredAddress", signupRequest.getRegisteredAddress());
+                syncRequest.put("factoryAddress", signupRequest.getFactoryAddress());
+                syncRequest.put("registrationNo", signupRequest.getRegistrationNo());
+                syncRequest.put("vatNo", signupRequest.getVatNo());
+                syncRequest.put("tinNo", signupRequest.getTinNo());
+                syncRequest.put("isVatRegistered", signupRequest.isVatRegistered());
+                syncRequest.put("logoUrl", signupRequest.getCompanyLogo());
 
-            System.out.println("📤 Attempting to sync organization " + orgId + " to Ginuma-service...");
-            
-            ResponseEntity<Map> syncResponse = restTemplate.postForEntity(
-                    "http://ginuma-service/api/superadmin/companies/sync",
-                    syncRequest,
-                    Map.class);
+                System.out.println("📤 Attempting to sync NEW organization " + orgId + " to Ginuma-service...");
+                
+                ResponseEntity<Map> syncResponse = restTemplate.postForEntity(
+                        "http://ginuma-service/api/superadmin/companies/sync",
+                        syncRequest,
+                        Map.class);
 
-            if (syncResponse.getStatusCode().is2xxSuccessful()) {
-                System.out.println("✅ Successfully synced organization to Ginuma: " + orgId);
-                if (syncResponse.getBody() != null) {
-                    System.out.println("   Company ID in Ginuma: " + syncResponse.getBody().get("companyId"));
+                if (syncResponse.getStatusCode().is2xxSuccessful()) {
+                    System.out.println("✅ Successfully synced organization to Ginuma: " + orgId);
+                    if (syncResponse.getBody() != null) {
+                        System.out.println("   Company ID in Ginuma: " + syncResponse.getBody().get("companyId"));
+                    }
+                } else {
+                    System.err.println("⚠️ Ginuma sync returned non-success status: " + syncResponse.getStatusCode());
                 }
-            } else {
-                System.err.println("⚠️ Ginuma sync returned non-success status: " + syncResponse.getStatusCode());
+            } catch (org.springframework.web.client.HttpClientErrorException e) {
+                System.err.println("❌ HTTP Error syncing to Ginuma-service:");
+                System.err.println("   Status: " + e.getStatusCode());
+                System.err.println("   Response: " + e.getResponseBodyAsString());
+                System.err.println("   OrgId: " + orgId);
+                e.printStackTrace();
+                // Don't fail registration if Ginuma sync fails
+            } catch (Exception e) {
+                System.err.println("❌ Unexpected error syncing to Ginuma-service:");
+                System.err.println("   Error: " + e.getMessage());
+                System.err.println("   OrgId: " + orgId);
+                e.printStackTrace();
+                // Don't fail registration if Ginuma sync fails
             }
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
-            System.err.println("❌ HTTP Error syncing to Ginuma-service:");
-            System.err.println("   Status: " + e.getStatusCode());
-            System.err.println("   Response: " + e.getResponseBodyAsString());
-            System.err.println("   OrgId: " + orgId);
-            e.printStackTrace();
-            // Don't fail registration if Ginuma sync fails
-        } catch (Exception e) {
-            System.err.println("❌ Unexpected error syncing to Ginuma-service:");
-            System.err.println("   Error: " + e.getMessage());
-            System.err.println("   OrgId: " + orgId);
-            e.printStackTrace();
-            // Don't fail registration if Ginuma sync fails
+        } else {
+            System.out.println("ℹ️ Skipping Ginuma sync - using existing organization: " + orgId);
         }
 
         // Step 4: Perform automatic login to return JwtResponse
