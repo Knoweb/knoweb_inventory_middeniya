@@ -73,7 +73,8 @@ const GlobalLogout = () => {
       const HOST = window.location.hostname;
       const PROTOCOL = window.location.protocol;
       const IS_LOCAL = HOST === 'localhost' || HOST === '127.0.0.1';
-      const mainDashboardUrl = `${PROTOCOL}//${HOST}:${IS_LOCAL ? '5173' : '3000'}`;
+      // Hardcoded IP for Main Dashboard if not local
+      const mainDashboardUrl = IS_LOCAL ? `${PROTOCOL}//${HOST}:5173` : 'http://167.71.206.166:3000';
 
       // Determine where to redirect next
       if (returnTo) {
