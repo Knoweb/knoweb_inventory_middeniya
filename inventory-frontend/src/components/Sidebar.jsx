@@ -78,6 +78,19 @@ const Sidebar = () => {
 
     const iconClass = "w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300";
 
+    // --- Role-Based Menu Filtering Logic ---
+    const userRoles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
+    
+    const isStockKeeper = userRoles.some(r => ['ROLE_INV_STOCK_KEEPER', 'ROLE_STOCK_KEEPER', 'ROLE_PROCUREMENT'].includes(r));
+    const isMolding = userRoles.some(r => ['ROLE_INV_MOLDING', 'ROLE_INJECTION_MOLDING'].includes(r));
+    const isAssemble = userRoles.some(r => ['ROLE_INV_ASSEMBLE', 'ROLE_ASSEMBLE'].includes(r));
+    const isPrimary = userRoles.some(r => ['ROLE_INV_PRIMARY', 'ROLE_PRIMARY'].includes(r));
+    const isQC = userRoles.some(r => ['ROLE_INV_QC', 'ROLE_QC'].includes(r));
+
+    // Show Admin menu if they don't have any specific operational node role (or if they explicitly have COMPANY/ADMIN)
+    const showAdminMenu = userRoles.some(r => ['ROLE_COMPANY', 'ROLE_ORG_ADMIN', 'ROLE_ADMIN'].includes(r)) || 
+                         (!isStockKeeper && !isMolding && !isAssemble && !isPrimary && !isQC);
+
     return (
         <aside className="bg-slate-950 border-r border-slate-900 h-screen flex flex-col w-72 overflow-y-auto sticky top-0 custom-scrollbar shadow-2xl">
             <div className="px-8 py-8 mb-2 relative overflow-hidden">
@@ -122,87 +135,121 @@ const Sidebar = () => {
             </div>
 
             <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-x-hidden">
-                <NavLink to="/" className={navLinkClass}>
-                    <LayoutDashboard className={iconClass} />
-                    <span>Control Panel</span>
-                    <div className="absolute right-4 w-1 h-1 rounded-full bg-indigo-400 opacity-0 group-[.active]:opacity-100 shadow-[0_0_8px_rgb(129,140,248)]" />
-                </NavLink>
-
-                <NavLink to="/products" className={navLinkClass}>
-                    <MonitorPlay className={iconClass} />
-                    <span>Unit Management</span>
-                </NavLink>
-
-
-
-                <NavLink to="/inventory" className={navLinkClass}>
-                    <Database className={iconClass} />
-                    <span>Live Stock</span>
-                    <span className="absolute right-4 text-[8px] font-black bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">LIVE</span>
-                </NavLink>
-
-                <NavLink to="/orders" className={navLinkClass}>
-                    <ShoppingCart className={iconClass} />
-                    <span>Order Ledger</span>
-                </NavLink>
-
-                <NavLink to="/warehouses" className={navLinkClass}>
-                    <Warehouse className={iconClass} />
-                    <span>Warehouses</span>
-                </NavLink>
-
-                <NavLink to="/suppliers" className={navLinkClass}>
-                    <Truck className={iconClass} />
-                    <span>Supply Chain</span>
-                </NavLink>
-
-
-                {industryMenuItems.length > 0 && (
-                    <div className="mt-12">
-                        <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.45em] px-6 mb-5 flex items-center gap-3">
-                            <span className="w-4 h-[1px] bg-slate-800" /> VERTICALS
-                        </h3>
-                        {industryMenuItems.map((item, idx) => (
-                            <NavLink key={idx} to={item.path} className={navLinkClass}>
-                                <item.icon className={iconClass} />
-                                <span>{item.label}</span>
-                            </NavLink>
-                        ))}
-                    </div>
+                
+                {/* --- OPERATIONAL NODE SPECIFIC MENUS --- */}
+                {isStockKeeper && (
+                    <NavLink to="/stores" className={navLinkClass}>
+                        <Warehouse className={iconClass} />
+                        <span>Stores Panel</span>
+                    </NavLink>
+                )}
+                {isMolding && (
+                    <NavLink to="/molding" className={navLinkClass}>
+                        <Layers className={iconClass} />
+                        <span>Molding Ops</span>
+                    </NavLink>
+                )}
+                {isAssemble && (
+                    <NavLink to="/assemble" className={navLinkClass}>
+                        <Box className={iconClass} />
+                        <span>Assembly Line</span>
+                    </NavLink>
+                )}
+                {isPrimary && (
+                    <NavLink to="/primary" className={navLinkClass}>
+                        <MonitorPlay className={iconClass} />
+                        <span>Primary Fin.</span>
+                    </NavLink>
+                )}
+                {isQC && (
+                    <NavLink to="/qc" className={navLinkClass}>
+                        <Activity className={iconClass} />
+                        <span>Quality Control</span>
+                    </NavLink>
                 )}
 
-                <div className="mt-12">
-                    <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.45em] px-6 mb-5 flex items-center gap-3">
-                        <span className="w-4 h-[1px] bg-slate-800" /> SYSTEM ARCH
-                    </h3>
+                {/* --- STANDARD ADMIN & MANAGEMENT MENUS --- */}
+                {showAdminMenu && (
+                    <>
+                        <NavLink to="/" className={navLinkClass}>
+                            <LayoutDashboard className={iconClass} />
+                            <span>Control Panel</span>
+                            <div className="absolute right-4 w-1 h-1 rounded-full bg-indigo-400 opacity-0 group-[.active]:opacity-100 shadow-[0_0_8px_rgb(129,140,248)]" />
+                        </NavLink>
 
-                    <NavLink to="/branches" className={navLinkClass}>
-                        <Building2 className={iconClass} />
-                        <span>Branchers</span>
-                    </NavLink>
+                        <NavLink to="/products" className={navLinkClass}>
+                            <MonitorPlay className={iconClass} />
+                            <span>Unit Management</span>
+                        </NavLink>
 
-                    <NavLink to="/catalog/settings" className={navLinkClass}>
-                        <Layers className={iconClass} />
-                        <span>Catalog</span>
-                    </NavLink>
+                        <NavLink to="/inventory" className={navLinkClass}>
+                            <Database className={iconClass} />
+                            <span>Live Stock</span>
+                            <span className="absolute right-4 text-[8px] font-black bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">LIVE</span>
+                        </NavLink>
 
-                    <NavLink to="/notifications" className={navLinkClass}>
-                        <Bell className={iconClass} />
-                        <span>Notifications</span>
-                        <span className="absolute right-4 w-2 h-2 rounded-full bg-rose-500 border-2 border-slate-950 shadow-[0_0_10px_rgb(244,63,94)] animate-pulse" />
-                    </NavLink>
+                        <NavLink to="/orders" className={navLinkClass}>
+                            <ShoppingCart className={iconClass} />
+                            <span>Order Ledger</span>
+                        </NavLink>
 
-                    <NavLink to="/analytics" className={navLinkClass}>
-                        <Activity className={iconClass} />
-                        <span>Analytics</span>
-                    </NavLink>
+                        <NavLink to="/warehouses" className={navLinkClass}>
+                            <Warehouse className={iconClass} />
+                            <span>Warehouses</span>
+                        </NavLink>
 
-                    <NavLink to="/stock-ledger" className={navLinkClass}>
-                        <BookOpen className={iconClass} />
-                        <span>Audit Vault</span>
-                    </NavLink>
+                        <NavLink to="/suppliers" className={navLinkClass}>
+                            <Truck className={iconClass} />
+                            <span>Supply Chain</span>
+                        </NavLink>
 
-                </div>
+                        {industryMenuItems.length > 0 && (
+                            <div className="mt-12">
+                                <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.45em] px-6 mb-5 flex items-center gap-3">
+                                    <span className="w-4 h-[1px] bg-slate-800" /> VERTICALS
+                                </h3>
+                                {industryMenuItems.map((item, idx) => (
+                                    <NavLink key={idx} to={item.path} className={navLinkClass}>
+                                        <item.icon className={iconClass} />
+                                        <span>{item.label}</span>
+                                    </NavLink>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="mt-12">
+                            <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-[0.45em] px-6 mb-5 flex items-center gap-3">
+                                <span className="w-4 h-[1px] bg-slate-800" /> SYSTEM ARCH
+                            </h3>
+
+                            <NavLink to="/branches" className={navLinkClass}>
+                                <Building2 className={iconClass} />
+                                <span>Branchers</span>
+                            </NavLink>
+
+                            <NavLink to="/catalog/settings" className={navLinkClass}>
+                                <Layers className={iconClass} />
+                                <span>Catalog</span>
+                            </NavLink>
+
+                            <NavLink to="/notifications" className={navLinkClass}>
+                                <Bell className={iconClass} />
+                                <span>Notifications</span>
+                                <span className="absolute right-4 w-2 h-2 rounded-full bg-rose-500 border-2 border-slate-950 shadow-[0_0_10px_rgb(244,63,94)] animate-pulse" />
+                            </NavLink>
+
+                            <NavLink to="/analytics" className={navLinkClass}>
+                                <Activity className={iconClass} />
+                                <span>Analytics</span>
+                            </NavLink>
+
+                            <NavLink to="/stock-ledger" className={navLinkClass}>
+                                <BookOpen className={iconClass} />
+                                <span>Audit Vault</span>
+                            </NavLink>
+                        </div>
+                    </>
+                )}
             </nav>
 
             <div className="p-4 mt-auto border-t border-slate-900 group">
