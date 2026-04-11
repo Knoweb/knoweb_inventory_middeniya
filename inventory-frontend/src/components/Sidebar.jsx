@@ -135,10 +135,25 @@ const Sidebar = () => {
                 
                 {/* --- OPERATIONAL NODE SPECIFIC MENUS --- */}
                 {isStockKeeper && (
-                    <NavLink to="/stores" className={navLinkClass}>
-                        <Warehouse className={iconClass} />
-                        <span>Stores Panel</span>
-                    </NavLink>
+                    <div className="mb-4">
+                        <div className="px-6 py-2 text-[8px] font-black tracking-[0.3em] text-slate-500 uppercase">Stores Operations</div>
+                        <NavLink to="/stores" className={navLinkClass}>
+                            <LayoutDashboard className={iconClass} />
+                            <span>Dashboard</span>
+                        </NavLink>
+                        <NavLink to="/stores/receiving" className={navLinkClass}>
+                            <Warehouse className={iconClass} />
+                            <span>Stock In / Adjust</span>
+                        </NavLink>
+                        <NavLink to="/stores/purchase-orders" className={navLinkClass}>
+                            <ShoppingCart className={iconClass} />
+                            <span>Purchase Orders</span>
+                        </NavLink>
+                        <NavLink to="/stock-ledger" className={navLinkClass}>
+                            <Box className={iconClass} />
+                            <span>Stock Ledger</span>
+                        </NavLink>
+                    </div>
                 )}
                 {isMolding && (
                     <NavLink to="/molding" className={navLinkClass}>
