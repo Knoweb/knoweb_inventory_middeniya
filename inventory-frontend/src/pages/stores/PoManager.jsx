@@ -347,11 +347,10 @@ function PoManager() {
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('purchase');
-  const [actionError, setActionError] = useState('');
+const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
   const [showCreatePO, setShowCreatePO] = useState(false);
-  const [showCreateSO, setShowCreateSO] = useState(false);
+  
   const [showReturnPO, setShowReturnPO] = useState(null); // stores the order to return
   const [viewOrder, setViewOrder] = useState(null);
 
@@ -584,7 +583,7 @@ function PoManager() {
       )}
 
       {showCreatePO && <CreatePurchaseOrderModal suppliers={suppliers} onClose={() => setShowCreatePO(false)} onCreated={(msg) => { showSuccess(msg); fetchOrders(); }} />}
-      {showCreateSO && <CreateSalesOrderModal onClose={() => setShowCreateSO(false)} onCreated={(msg) => { showSuccess(msg); fetchOrders(); }} />}
+      
       {showReturnPO && <ReturnOrderModal order={showReturnPO} products={products} onClose={() => setShowReturnPO(null)} onReturned={(msg) => { showSuccess(msg); fetchOrders(); }} />}
 
       <header className="flex justify-between items-end border-b border-slate-100 pb-6">
@@ -617,120 +616,19 @@ function PoManager() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="px-6 py-6 border-b border-slate-50 bg-slate-50/20 flex flex-wrap items-center justify-between gap-6">
-          <div className="flex gap-1.5 p-1.5 bg-slate-100/60 rounded-2xl shadow-inner">
-            <button onClick={() => setActiveTab('purchase')} className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2.5 transition-all ${activeTab === 'purchase' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}>
-              <ShoppingCart size={16} /> Purchase Order
-              <span className={`ml-1 text-[9px] px-2 py-0.5 rounded-full font-black ${activeTab === 'purchase' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>{purchaseOrders.length}</span>
-            </button>
-            <button onClick={() => setActiveTab('sales')} className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2.5 transition-all ${activeTab === 'sales' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'text-slate-400 hover:text-slate-600'}`}>
-              <TrendingUp size={16} /> Fulfillment
-              <span className={`ml-1 text-[9px] px-2 py-0.5 rounded-full font-black ${activeTab === 'sales' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>{salesOrders.length}</span>
-            </button>
-          </div>
-
-          <div>
-            {activeTab === 'purchase' && (
-              <button
-                id="create-purchase-order-btn"
-                onClick={() => setShowCreatePO(true)}
-                className="px-8 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-[0_8px_30px_rgb(99,102,241,0.2)]"
-              >
-                <Plus size={18} /> New PO manifest
-              </button>
-            )}
-
-            {activeTab === 'sales' && (
-              <button
-                id="create-sales-order-btn"
-                onClick={() => setShowCreateSO(true)}
-                className="px-8 py-3 bg-emerald-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 flex items-center gap-2 shadow-[0_8px_30px_rgb(16,185,129,0.2)]"
-              >
-                <Plus size={18} /> New Sales Order
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="p-6 min-h-[400px]">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-[300px] text-slate-300">
-              <RefreshCw size={40} className="animate-spin mb-4" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Synching Ledger...</span>
-            </div>
-          ) : activeTab === 'purchase' ? (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-400">
-              <PurchaseOrdersTable
-                orders={purchaseOrders}
-                suppliers={suppliers}
-                products={products}
-                warehouses={warehouses}
-                onView={handleView}
-                onApprove={handleApprove}
-                onReceive={handleReceive}
-                onCancel={handleCancel}
-                onReturn={handleReturnAction}
-              />
-            </div>
-          ) : (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-400">
-              <div className="overflow-x-auto rounded-xl border border-slate-100">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Reference</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Entity</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Origin Logic</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valuation</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Created</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {salesOrders.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" className="px-6 py-20 text-center text-slate-300 italic text-sm">No sales records available in this node.</td>
-                      </tr>
-                    ) : (
-                      salesOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-slate-50 transition-colors group">
-                          <td className="px-6 py-4 text-center"><span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded shadow-inner tracking-widest font-mono">#SO-{String(order.id).padStart(3, '0')}</span></td>
-                          <td className="px-6 py-4"><span className="text-sm font-black text-slate-800">{order.customerName}</span></td>
-                          <td className="px-6 py-4 font-bold text-slate-400 text-xs italic">{getWarehouseName(order.warehouseId)}</td>
-                          <td className="px-6 py-4 text-sm font-black text-slate-900 tracking-tighter">Rs.{(order.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border ${order.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                              }`}>
-                              {order.status === 'COMPLETED' ? '✅ Fulfilled' : '⏳ Pending'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-[10px] font-black text-slate-300 uppercase italic tracking-tighter">{new Date(order.createdAt).toLocaleDateString()}</td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              {order.status !== 'COMPLETED' && (
-                                <button onClick={() => handleComplete(order.id)} className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-50 transition-all flex items-center gap-2">
-                                  <CheckCircle2 size={12} /> Mark Fulfilled
-                                </button>
-                              )}
-                              <button className="p-2 bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="px-6 py-6 border-b border-slate-50 bg-slate-50/20 flex flex-wrap items-center justify-between gap-6"><h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><ShoppingCart size={24} className="text-indigo-600" />Purchase Orders<span className="ml-2 text-xs px-2.5 py-1 rounded-full font-black bg-indigo-100 text-indigo-700">{purchaseOrders.length}</span></h1><div><button id="create-purchase-order-btn" onClick={() => setShowCreatePO(true)} className="px-8 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-[0_8px_30px_rgb(99,102,241,0.2)]"><Plus size={18} /> New PO manifest</button></div></div><div className="p-6 min-h-[400px]">{loading ? (<div className="flex flex-col items-center justify-center h-[300px] text-slate-300"><RefreshCw size={40} className="animate-spin mb-4" /><span className="text-[10px] font-black uppercase tracking-[0.3em]">Synching Ledger...</span></div>) : (<div className="animate-in fade-in slide-in-from-bottom-2 duration-400"><PurchaseOrdersTable orders={purchaseOrders} suppliers={suppliers} products={products} warehouses={warehouses} onView={handleView} onApprove={handleApprove} onReceive={handleReceive} onCancel={handleCancel} onReturn={handleReturnAction} /></div>)}</div>
       </div>
     </div>
   );
 }
 
 export default PoManager;
+
+
+
+
+
+
 
 
 
