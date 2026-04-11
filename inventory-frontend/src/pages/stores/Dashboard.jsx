@@ -31,6 +31,17 @@ const StoresDashboard = () => {
             View POs
           </button>
         </div>
+
+        <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Current Stock & Ledger</h2>
+          <p className="text-sm text-gray-500 mb-4">View current inventory levels, expiry alerts, and stock valuations.</p>
+          <button 
+            onClick={() => navigate('/stock-ledger')}
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-blue-700 transition-colors"
+          >
+            View Ledger
+          </button>
+        </div>
       </div>
     </div>
   );
