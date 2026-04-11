@@ -13,7 +13,12 @@ const StoresDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800 mb-2">Stock In / Receiving</h2>
           <p className="text-sm text-gray-500 mb-4">Create new batches from incoming purchase orders.</p>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-blue-700 transition-colors">Record Stock In</button>
+          <button 
+            onClick={() => navigate('/stores/receiving')}
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-blue-700 transition-colors"
+          >
+            Record Stock In
+          </button>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
