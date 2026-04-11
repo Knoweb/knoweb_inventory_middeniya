@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import apiClient, { orderService, supplierService, productService, warehouseService } from '../services/api';
-import { useNotification } from '../context/NotificationContext';
-import PurchaseOrdersTable from '../components/PurchaseOrdersTable';
+import apiClient, { orderService, supplierService, productService, warehouseService } from '../../services/api';
+import { useNotification } from '../../context/NotificationContext';
+import PurchaseOrdersTable from '../../components/PurchaseOrdersTable';
 import { ShoppingCart, DollarSign, X, Plus, Package, MessageSquare, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Layers, TrendingUp } from 'lucide-react';
 
 // ── Initial form states ────────────────────────────────────────────────────────
