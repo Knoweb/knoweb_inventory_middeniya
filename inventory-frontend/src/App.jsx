@@ -27,6 +27,7 @@ import CompanyProfile from './pages/CompanyProfile';
 import Sidebar from './components/Sidebar';
 
 import StoresDashboard from './pages/stores/Dashboard';
+import PoManager from './pages/stores/PoManager';
 import MoldingDashboard from './pages/molding/Dashboard';
 import AssembleDashboard from './pages/assemble/Dashboard';
 import PrimaryDashboard from './pages/primary/Dashboard';
@@ -73,6 +74,7 @@ function AppContent() {
                   {/* Stock Keeper / Stores Guard */}
                   <Route element={<RoleGuard allowedRoles={['ROLE_INV_STOCK_KEEPER', 'ROLE_STOCK_KEEPER', 'ROLE_PROCUREMENT']} />}>
                     <Route path="/stores" element={<StoresDashboard />} />
+                    <Route path="/stores/purchase-orders" element={<PoManager />} />
                   </Route>
 
                   {/* Injection Molding Guard */}

@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const StoresDashboard = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold text-gray-800 mb-2">Stock Keeper Dashboard</h1>
@@ -16,7 +19,12 @@ const StoresDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800 mb-2">Purchase Orders</h2>
           <p className="text-sm text-gray-500 mb-4">Manage multi-item purchase orders and suppliers.</p>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-blue-700 transition-colors">View POs</button>
+          <button 
+            onClick={() => navigate('/stores/purchase-orders')}
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-blue-700 transition-colors"
+          >
+            View POs
+          </button>
         </div>
       </div>
     </div>
