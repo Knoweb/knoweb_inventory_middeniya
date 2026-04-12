@@ -7,6 +7,7 @@ import { ShoppingCart, DollarSign, X, Plus, Package, MessageSquare, ArrowRight, 
 // ── Initial form states ────────────────────────────────────────────────────────
 const INIT_PO = {
   supplierId: '',
+  warehouseId: '',
   expectedDeliveryDate: '',
   currency: 'LKR',
   notes: '',
@@ -94,6 +95,7 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.supplierId) { setError('Please select a supplier.'); return; }
+    if (!form.warehouseId) { setError('Please select a destination warehouse.'); return; }
     if (!form.expectedDeliveryDate) { setError('Please select an expected delivery date.'); return; }
     if (form.items.some(it => !it.itemCode || !it.quantity || !it.unitPrice)) {
       setError('Please fill in all item fields.'); return;
@@ -111,7 +113,7 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
           quantity: parseInt(it.quantity, 10),
           unitPrice: parseFloat(it.unitPrice),
         })),
-        warehouseId: null // Add a default warehouseId field if necessary, or leave null until chosen.
+        warehouseId: form.warehouseId // Send proper warehouse ID
       };
       await orderService.createPurchaseOrder(payload);
       onCreated('Purchase order created successfully!');
@@ -141,7 +143,7 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-1.5">
               <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Supplier *</label>
               <select
@@ -152,6 +154,20 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
               >
                 <option value="">— Select supplier —</option>
                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Warehouse *</label>
+              <select
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition-all"
+                value={form.warehouseId}
+                onChange={e => setForm(p => ({ ...p, warehouseId: e.target.value }))}
+                required
+                disabled={warehousesLoading}
+              >
+                <option value="">{warehousesLoading ? 'Loading…' : '— Select warehouse —'}</option>
+                {availableWarehouses.map(w => <option key={w.id} value={w.id}>{w.name || w.warehouseName || `WH-` + w.id}</option>)}
               </select>
             </div>
 
