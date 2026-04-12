@@ -149,6 +149,10 @@ const Sidebar = () => {
                             <ShoppingCart className={iconClass} />
                             <span>Purchase Orders</span>
                         </NavLink>
+                        <NavLink to="/suppliers" className={navLinkClass}>
+                            <Truck className={iconClass} />
+                            <span>Supply Chain</span>
+                        </NavLink>
                         <NavLink to="/stock-ledger" className={navLinkClass}>
                             <Box className={iconClass} />
                             <span>Stock Ledger</span>
