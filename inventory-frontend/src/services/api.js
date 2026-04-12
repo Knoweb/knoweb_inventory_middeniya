@@ -89,7 +89,7 @@ export const authService = {
 
 export const productService = {
   getAll: () => apiClient.get('/api/products'),
-  getByOrganization: (orgId) => apiClient.get(`/api/products/organization/${orgId}`),
+  getByOrganization: (orgId) => apiClient.get(`/api/companies/${orgId}/items`),
   getById: (id) => apiClient.get(`/api/products/${id}`),
   create: (product) => apiClient.post('/api/products', product),
   update: (id, product) => apiClient.put(`/api/products/${id}`, product),
@@ -129,7 +129,8 @@ export const warehouseService = {
 export const supplierService = {
   getAll: () => apiClient.get('/api/suppliers'),
   getById: (id) => apiClient.get(`/api/suppliers/${id}`),
-  getByOrganization: (orgId) => apiClient.get(`/api/suppliers/organization/${orgId}`),
+  // Fetch suppliers created by Ginuma Admin for this company
+  getByOrganization: (orgId) => apiClient.get(`/api/ginuma/suppliers/companies/${orgId}`),
   create: (supplier) => apiClient.post('/api/suppliers', supplier),
   update: (id, supplier) => apiClient.put(`/api/suppliers/${id}`, supplier),
   delete: (id) => apiClient.delete(`/api/suppliers/${id}`),
