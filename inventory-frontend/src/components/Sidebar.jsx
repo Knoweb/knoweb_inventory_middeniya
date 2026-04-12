@@ -137,7 +137,7 @@ const Sidebar = () => {
                 {isStockKeeper && (
                     <div className="mb-4">
                         <div className="px-6 py-2 text-[8px] font-black tracking-[0.3em] text-slate-500 uppercase">Stores Operations</div>
-                        <NavLink to="/stores" className={navLinkClass}>
+                        <NavLink to="/stores" end className={navLinkClass}>
                             <LayoutDashboard className={iconClass} />
                             <span>Dashboard</span>
                         </NavLink>
