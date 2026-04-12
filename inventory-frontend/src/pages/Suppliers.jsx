@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { supplierService } from '../services/api';
+import { supplierService, productService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { FaEdit, FaTrash, FaEnvelope, FaPhone, FaPlus, FaMinus } from 'react-icons/fa';
-import { RefreshCw, Plus, X, User, Mail, Phone, Globe, MapPin, Tag, Trash2, Edit3, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Plus, X, User, Mail, Phone, Globe, MapPin, Tag, Trash2, Edit3, Search, AlertCircle, CheckCircle2, Box, ArrowRight } from 'lucide-react';
 
 function Suppliers() {
   const { user } = useAuth();
   const { showToast, confirm } = useNotification();
   const [suppliers, setSuppliers] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showMapperModal, setShowMapperModal] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -26,9 +28,22 @@ function Suppliers() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
 
+  const [selectedSupplierForMapping, setSelectedSupplierForMapping] = useState(null);
+  const [supplierMappings, setSupplierMappings] = useState([]);
+  const [mappingProduct, setMappingProduct] = useState('');
+  const [mappingPrice, setMappingPrice] = useState('');
+
   useEffect(() => {
     if (user?.orgId) {
+      const orgId = user.orgId || 1;
       fetchSuppliers();
+      // Also fetch products for mapping
+      productService.getByOrganization(orgId)
+        .then(res => {
+          const list = Array.isArray(res.data) ? res.data : (res.data?.content ?? res.data?.data ?? []);
+          setProducts(list);
+        })
+        .catch(console.error);
     }
   }, [user]);
 
@@ -154,6 +169,63 @@ function Suppliers() {
     setContactDetails(updatedDetails);
   };
 
+  const handleOpenMapper = (supplier) => {
+    setSelectedSupplierForMapping(supplier);
+    setSupplierMappings(supplier.contactInfo?.mappings || []);
+    setMappingProduct('');
+    setMappingPrice('');
+    setShowMapperModal(true);
+  };
+
+  const handleAddMapping = () => {
+    if (!mappingProduct) {
+      showToast('Please select a product/material to map.', 'error');
+      return;
+    }
+    const alreadyMapped = supplierMappings.find(m => String(m.productId) === String(mappingProduct));
+    if (alreadyMapped) {
+      showToast('This product is already mapped.', 'error');
+      return;
+    }
+
+    const prod = products.find(p => String(p.id) === String(mappingProduct));
+    const newMapping = {
+      productId: mappingProduct,
+      productName: prod?.name || prod?.productName || `Product #${mappingProduct}`,
+      defaultPrice: mappingPrice ? parseFloat(mappingPrice) : 0
+    };
+    
+    setSupplierMappings([...supplierMappings, newMapping]);
+    setMappingProduct('');
+    setMappingPrice('');
+  };
+
+  const handleRemoveMapping = (index) => {
+    setSupplierMappings(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveMappings = async () => {
+    if (!selectedSupplierForMapping) return;
+    try {
+      const payload = {
+        name: selectedSupplierForMapping.name,
+        orgId: selectedSupplierForMapping.orgId,
+        contactInfo: {
+          ...(selectedSupplierForMapping.contactInfo || {}),
+          mappings: supplierMappings
+        }
+      };
+      
+      await supplierService.update(selectedSupplierForMapping.id, payload);
+      showToast('Supplier mappings updated', 'success');
+      setShowMapperModal(false);
+      fetchSuppliers();
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to sync mappings', 'error');
+    }
+  };
+
   if (loading) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-400 space-y-4">
       <RefreshCw className="animate-spin text-indigo-500" size={40} />
@@ -248,6 +320,18 @@ function Suppliers() {
                       <td className="px-10 py-8 text-right">
                         <div className="flex justify-end items-center gap-3 transition-all">
                           <button
+                            onClick={() => handleOpenMapper(supplier)}
+                            className="p-3 bg-white text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl shadow-sm border border-slate-100 hover:border-emerald-200 transition-all active:scale-90 relative group"
+                            title="Item Mappings"
+                          >
+                            {supplier.contactInfo?.mappings?.length > 0 && (
+                              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[8px] font-black border border-white">
+                                {supplier.contactInfo.mappings.length}
+                              </span>
+                            )}
+                            <Box size={18} />
+                          </button>
+                          <button
                             onClick={() => handleEdit(supplier)}
                             className="p-3 bg-white text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl shadow-sm border border-slate-100 hover:border-indigo-100 transition-all active:scale-90"
                             title="Edit"
@@ -284,6 +368,140 @@ function Suppliers() {
         </div>
 
       </div>
+
+      {showMapperModal && selectedSupplierForMapping && (
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={(e) => e.target === e.currentTarget && setShowMapperModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 border border-white">
+            <header className="px-8 py-6 border-b border-emerald-50 flex items-center justify-between bg-white shrink-0 z-10">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
+                  <Box size={22} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-800 tracking-tight leading-none uppercase italic">Supplier-Item Mappings</h2>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1.5 italic">Link standard raw materials or products to {selectedSupplierForMapping.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMapperModal(false)}
+                className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all active:scale-90"
+              >
+                <X size={24} />
+              </button>
+            </header>
+
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                
+                {/* NEW MAPPING ENTRY */}
+                <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 shadow-inner">
+                  <div className="flex items-center gap-3 px-1 mb-5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Map New Item</h3>
+                  </div>
+                  
+                  <div className="flex items-end gap-4">
+                    <div className="flex-1 space-y-2.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Select Product *</label>
+                      <select
+                        className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-emerald-50 focus:border-emerald-400 transition-all shadow-sm"
+                        value={mappingProduct}
+                        onChange={(e) => setMappingProduct(e.target.value)}
+                      >
+                        <option value="">— Select a product / material —</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id}>{p.name || p.productName || `Product #${p.id}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="w-40 space-y-2.5">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Default Price (Rs)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-emerald-400 transition-all shadow-sm"
+                        placeholder="0.00"
+                        value={mappingPrice}
+                        onChange={(e) => setMappingPrice(e.target.value)}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddMapping}
+                      className="px-6 py-3 h-[42px] mb-[2px] bg-emerald-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Plus size={14} /> Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* CURRENT MAPPINGS LIST */}
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-1">Currently Mapped Items</h3>
+                  <div className="space-y-2">
+                    {supplierMappings.length === 0 ? (
+                      <div className="py-12 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center text-slate-300 bg-slate-50/30">
+                        <Box size={32} className="mb-3 opacity-20" />
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">No items currently mapped</p>
+                      </div>
+                    ) : (
+                      supplierMappings.map((mapItem, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl shadow-sm animate-in slide-in-from-left-4 duration-300">
+                          <div className="flex items-center gap-4">
+                            <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                              <Box size={14} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-slate-800 tracking-tight">{mapItem.productName}</p>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Product ID: {mapItem.productId}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-6">
+                            <span className="text-xs font-black text-emerald-600 tracking-wider">
+                              Rs. {Number(mapItem.defaultPrice).toFixed(2)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMapping(idx)}
+                              className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all active:scale-90"
+                              title="Remove map"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="px-8 py-6 border-t border-slate-100 flex gap-4 justify-end bg-white shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowMapperModal(false)}
+                  className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-slate-600 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveMappings}
+                  className="px-10 py-4 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-slate-200 hover:bg-indigo-600 transition-all active:scale-95 flex items-center gap-3"
+                >
+                  <ArrowRight size={16} />
+                  Sync Mappings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
