@@ -103,14 +103,15 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const payload = {
         supplierId: form.supplierId,
+        orgId: user.orgId || 1, // Crucial for visibility in this organization
         expectedDeliveryDate: form.expectedDeliveryDate,
-        currency: form.currency || "LKR",
         notes: form.notes.trim() || null,
-        lineItems: form.items.map(it => ({
-          itemCode: it.itemCode,
+        items: form.items.map(it => ({
+          productId: parseInt(it.productId || it.itemCode, 10),
           quantity: parseInt(it.quantity, 10),
           unitPrice: parseFloat(it.unitPrice),
         })),
+        warehouseId: null // Add a default warehouseId field if necessary, or leave null until chosen.
       };
       await orderService.createPurchaseOrder(payload);
       onCreated('Purchase order created successfully!');
