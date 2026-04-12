@@ -370,7 +370,7 @@ const [actionError, setActionError] = useState('');
         orderService.getPurchaseOrders(),
         orgId ? supplierService.getByOrganization(orgId) : supplierService.getAll(),
         productService.getAll(),
-        warehouseService.getAllWarehouses(),
+        orgId ? warehouseService.getByOrganization(orgId) : warehouseService.getAll(),
       ]);
 
       if (purchaseRes.status === 'fulfilled') {
