@@ -33,6 +33,12 @@ public class CorsConfig {
         corsConfig.addAllowedOrigin("http://167.71.206.166:3001"); // Ginuma Frontend (prod)
         corsConfig.addAllowedOrigin("http://167.71.206.166:3002"); // Inventory Frontend (prod)
         corsConfig.addAllowedOrigin("http://167.71.206.166:3003"); // Subscription Frontend (prod)
+
+        // New Droplet IP
+        corsConfig.addAllowedOrigin("http://178.128.221.122:3000"); // Knoweb Main (new prod)
+        corsConfig.addAllowedOrigin("http://178.128.221.122:3001"); // Ginuma Frontend (new prod)
+        corsConfig.addAllowedOrigin("http://178.128.221.122:3002"); // Inventory Frontend (new prod)
+        corsConfig.addAllowedOrigin("http://178.128.221.122:3003"); // Subscription Frontend (new prod)
         
         // Allow all HTTP methods (GET, POST, PUT, DELETE, OPTIONS, etc.)
         corsConfig.addAllowedMethod("*");
