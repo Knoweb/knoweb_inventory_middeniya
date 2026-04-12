@@ -26,7 +26,8 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const orgId = user.orgId;
 
-    productService.getAll()
+    const productFetch = orgId ? productService.getByOrganization(orgId) : productService.getAll();
+    productFetch
       .then(res => {
         const data = res.data;
         const list = Array.isArray(data) ? data : (data?.content ?? data?.data ?? []);
@@ -369,7 +370,7 @@ const [actionError, setActionError] = useState('');
       const [purchaseRes, suppliersRes, productsRes, warehousesRes] = await Promise.allSettled([
         orderService.getPurchaseOrders(),
         orgId ? supplierService.getByOrganization(orgId) : supplierService.getAll(),
-        productService.getAll(),
+        orgId ? productService.getByOrganization(orgId) : productService.getAll(),
         orgId ? warehouseService.getByOrganization(orgId) : warehouseService.getAll(),
       ]);
 
