@@ -63,7 +63,7 @@ function Suppliers() {
 
   const handleEdit = (supplier) => {
     const { contactInfo = {}, name, orgId, id } = supplier;
-    const { email, phone, ...others } = contactInfo || {};
+    const { email, phone, mappings, ...others } = contactInfo || {};
 
     const otherDetails = Object.entries(others).map(([key, value]) => ({ key, value }));
 
@@ -93,6 +93,13 @@ function Suppliers() {
           contactInfoPayload[detail.key] = detail.value;
         }
       });
+
+      if (isEditing) {
+        const currentSupplier = suppliers.find(s => s.id === editId);
+        if (currentSupplier?.contactInfo?.mappings) {
+          contactInfoPayload.mappings = currentSupplier.contactInfo.mappings;
+        }
+      }
 
       const payload = {
         name: formData.name,
@@ -299,7 +306,7 @@ function Suppliers() {
                       <td className="px-10 py-8">
                         <div className="space-y-3">
                           {supplier.contactInfo && Object.entries(supplier.contactInfo).map(([key, value]) => {
-                            if (!value) return null;
+                            if (!value || key === 'mappings') return null;
                             return (
                               <div key={key} className="flex items-center gap-3">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] w-20 shrink-0">{key}</span>
