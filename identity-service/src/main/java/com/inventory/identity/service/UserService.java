@@ -3,8 +3,10 @@ package com.inventory.identity.service;
 import com.inventory.identity.dto.UserResponse;
 import com.inventory.identity.model.User;
 import com.inventory.identity.repository.UserRepository;
+import com.inventory.identity.repository.RefreshTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,6 +16,9 @@ public class UserService {
     
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
     
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
@@ -45,9 +50,11 @@ public class UserService {
                 .collect(Collectors.toList());
     }
     
+    @Transactional
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        refreshTokenRepository.deleteByUser(user);
         userRepository.delete(user);
     }
     
