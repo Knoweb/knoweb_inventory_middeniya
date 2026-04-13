@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { RefreshCw, ArrowRight, Play, CheckCircle2, Sparkles, Info } from 'lucide-react';
-import { workflowService } from '../../services/api';
+import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -23,9 +23,9 @@ const PrimaryDashboard = () => {
   const fetchWipBatches = async () => {
     try {
       setLoading(true);
-      const response = await workflowService.getWipBatches();
+      const response = await manufacturingService.getWip();
       // Filter for batches currently in PRIMARY stage
-      const primaryBatches = (response.data || []).filter(b => b.currentStage === 'PRIMARY' || b.stage === 'PRIMARY' || b.status === 'WIP_PRIMARY');
+      const primaryBatches = (response.data || []).filter(b => b.currentStage === 'PRIMARY' || b.stage === 'PRIMARY' || b.status === 'WIP_PRIMARY' || b.wipStatus === 'WIP_PRIMARY');
       setBatches(primaryBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
@@ -63,7 +63,8 @@ const PrimaryDashboard = () => {
         remarks: formData.remarks
       };
       
-      await workflowService.advanceBatch(selectedBatch.id, payload);
+      const newStatus = formData.qualityCheckPassed ? 'FINISHED_GOOD' : 'REWORK';
+      await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast('Batch successfully finished and moved to Inventory!', 'success');
       setShowAdvanceModal(false);
       fetchWipBatches();
@@ -122,12 +123,12 @@ const PrimaryDashboard = () => {
                   <div className="bg-amber-50 text-amber-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
                     {batch.status || 'WIP_PRIMARY'}
                   </div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty: {batch.quantity}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty: {batch.manufacturingAttributes?.quantity || batch.quantity || 0}</span>
                 </div>
                 
                 {/* Fixed the escaping issue securely for the batch number display */}
-                <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.batchNumber || `BATCH-${batch.id}`}</h3>
-                <p className="text-sm font-semibold text-slate-500 mb-8">{batch.itemName || 'Finished Unit'}</p>
+                <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || `BATCH-${batch.id}`}</h3>
+                <p className="text-sm font-semibold text-slate-500 mb-8">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Unit'}</p>
                 
                 <div className="mt-auto">
                   <button 

@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { RefreshCw, ArrowRight, Play, CheckCircle2, Wrench, Info } from 'lucide-react';
-import { workflowService } from '../../services/api';
+import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -23,9 +23,9 @@ const AssembleDashboard = () => {
   const fetchWipBatches = async () => {
     try {
       setLoading(true);
-      const response = await workflowService.getWipBatches();
+        const response = await manufacturingService.getWip();
       // Filter for batches currently in ASSEMBLE stage
-      const assembleBatches = (response.data || []).filter(b => b.currentStage === 'ASSEMBLE' || b.stage === 'ASSEMBLE' || b.status === 'WIP_ASSEMBLE');
+      const assembleBatches = (response.data || []).filter(b => b.currentStage === 'ASSEMBLE' || b.stage === 'ASSEMBLE' || b.status === 'WIP_ASSEMBLE' || b.wipStatus === 'WIP_ASSEMBLE');
       setBatches(assembleBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
@@ -63,7 +63,8 @@ const AssembleDashboard = () => {
         remarks: formData.remarks
       };
       
-      await workflowService.advanceBatch(selectedBatch.id, payload);
+      const newStatus = formData.qualityCheckPassed ? 'WIP_PRIMARY' : 'REWORK';
+      await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast('Batch successfully advanced to Primary Finishing!', 'success');
       setShowAdvanceModal(false);
       fetchWipBatches();
@@ -122,11 +123,11 @@ const AssembleDashboard = () => {
                   <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
                     {batch.status || 'WIP_ASSEMBLE'}
                   </div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty: {batch.quantity}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty: {batch.manufacturingAttributes?.quantity || batch.quantity || 0}</span>
                 </div>
                 
-                <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.batchNumber || `BATCH-${batch.id}`}</h3>
-                <p className="text-sm font-semibold text-slate-500 mb-8">{batch.itemName || 'Assembled Component'}</p>
+                <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || `BATCH-${batch.id}`}</h3>
+                <p className="text-sm font-semibold text-slate-500 mb-8">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Assembled Component'}</p>
                 
                 <div className="mt-auto">
                   <button 

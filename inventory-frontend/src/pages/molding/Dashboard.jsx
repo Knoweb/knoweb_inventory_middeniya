@@ -57,7 +57,7 @@ const MoldingDashboard = () => {
   const fetchWipBatches = async () => {
     try {
       setLoading(true);
-      const response = await manufacturingService.getActiveWip();
+      const response = await manufacturingService.getWip();
       // Filter for batches currently in INJECTION_MOLDING stage
       const moldingBatches = (response.data || []).filter(b => b.currentStage === 'INJECTION_MOLDING' || b.stage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING' || b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING');
       setBatches(moldingBatches);
