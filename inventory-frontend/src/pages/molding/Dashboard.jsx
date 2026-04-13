@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info } from 'lucide-react';
-import { workflowService } from '../../services/api';
+import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -23,9 +23,9 @@ const MoldingDashboard = () => {
   const fetchWipBatches = async () => {
     try {
       setLoading(true);
-      const response = await workflowService.getWipBatches();
+      const response = await manufacturingService.getActiveWip();
       // Filter for batches currently in INJECTION_MOLDING stage
-      const moldingBatches = (response.data || []).filter(b => b.currentStage === 'INJECTION_MOLDING' || b.stage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING');
+      const moldingBatches = (response.data || []).filter(b => b.currentStage === 'INJECTION_MOLDING' || b.stage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING' || b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING');
       setBatches(moldingBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
@@ -63,7 +63,8 @@ const MoldingDashboard = () => {
         remarks: formData.remarks
       };
       
-      await workflowService.advanceBatch(selectedBatch.id, payload);
+      const newStatus = formData.qualityCheckPassed ? 'WIP_ASSEMBLE' : 'REWORK';
+      await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast('Batch successfully advanced to Assembly!', 'success');
       setShowAdvanceModal(false);
       fetchWipBatches();
