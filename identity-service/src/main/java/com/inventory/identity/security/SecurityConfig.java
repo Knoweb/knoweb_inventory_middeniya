@@ -69,10 +69,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/organizations/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
                 
                 // Role-based endpoints
-                .requestMatchers(HttpMethod.GET, "/api/roles").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/users").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN", "MANAGER")
-                .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("SUPER_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/roles").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN", "COMPANY")
+                .requestMatchers(HttpMethod.POST, "/api/users").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN", "COMPANY")
+                .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN", "MANAGER", "COMPANY")
+                .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN", "COMPANY")
                 
                 // All other requests require authentication
                 .anyRequest().authenticated()
