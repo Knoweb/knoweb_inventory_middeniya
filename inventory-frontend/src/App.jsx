@@ -76,8 +76,10 @@ function AppContent() {
                   <Route element={<RoleGuard allowedRoles={['ROLE_INV_STOCK_KEEPER', 'ROLE_STOCK_KEEPER', 'ROLE_PROCUREMENT']} />}>
                     <Route path="/stores" element={<StoresDashboard />} />
                     <Route path="/stores/purchase-orders" element={<PoManager />} />
-                      <Route path="/stores/receiving" element={<ReceiveStock />} />
-                    <Route path="/molding" element={<MoldingDashboard />} />
+                      <Route path="/stores/receiving" element={<ReceiveStock />} />                    </Route>
+
+                    {/* Molding Guard */}
+                    <Route element={<RoleGuard allowedRoles={['ROLE_INV_MOLDING', 'ROLE_MOLDING', 'ROLE_INJECTION_MOLDING']} />}>                    <Route path="/molding" element={<MoldingDashboard />} />
                   </Route>
 
                   {/* Assemble Guard */}
