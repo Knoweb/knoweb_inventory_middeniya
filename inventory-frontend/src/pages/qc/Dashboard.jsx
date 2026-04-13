@@ -21,12 +21,9 @@ const QCDashboard = () => {
       const res = await apiClient.get('/api/inventory/qc-hold');
       setInspections(res.data);
     } catch (err) {
-      console.warn("QC API unavailable, utilizing fallback dataset...");
-      setInspections([
-        { id: 1, poNumber: "PO-2026-0142", itemCode: "RAW-PLAST-001", quantityDamaged: 20, reason: "Moisture exposure" },
-        { id: 2, poNumber: "PO-2026-0145", itemCode: "RAW-COLOR-005", quantityDamaged: 5, reason: "Packaging tear" },
-        { id: 3, poNumber: "PO-2026-0160", itemCode: "RAW-ADD-002", quantityDamaged: 10, reason: "Wrong specification" },
-      ]);
+      console.error("QC API unavailable.", err);
+      // Hardcoded data removed - waiting for real backend
+      setInspections([]);
     } finally {
       setLoading(false);
     }
@@ -60,12 +57,9 @@ const QCDashboard = () => {
       setShowModal(false);
       setSubmitting(false);
     } catch (err) {
-      console.warn("QC Decide API failing, performing local offline state transition...");
-      setTimeout(() => {
-        setInspections(prev => prev.filter(i => i.id !== selectedItem.id));
-        setShowModal(false);
-        setSubmitting(false);
-      }, 600);
+      console.error("QC Decide API failed:", err);
+      alert("Failed to submit decision to Backend API.");
+      setSubmitting(false);
     }
   };
 
