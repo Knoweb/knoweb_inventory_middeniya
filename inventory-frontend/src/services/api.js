@@ -216,6 +216,11 @@ export const retailService = {
   delete: (id) => apiClient.delete(`/api/retail/${id}`),
 };
 
+export const workflowService = {
+  getWipBatches: () => apiClient.get('/api/v1/inventory/wip'),
+  advanceBatch: (batchId, payload) => apiClient.put(`/api/v1/workflow/batches/${batchId}/advance`, payload),
+};
+
 export const manufacturingService = {
   create: (manufacturingProduct) => apiClient.post('/api/manufacturing', manufacturingProduct),
   update: (id, manufacturingProduct) => apiClient.put(`/api/manufacturing/${id}`, manufacturingProduct),
