@@ -51,7 +51,7 @@ const QCDashboard = () => {
     
     try {
       setSubmitting(true);
-      await apiClient.post(/api/inventory/qc-decide/ + selectedItem.id, {
+      await apiClient.post('/api/inventory/qc-decide/' + selectedItem.id, {
         action: actionType,
         remarks: remarks,
         processedBy: user?.username || 'QC_ADMIN'
