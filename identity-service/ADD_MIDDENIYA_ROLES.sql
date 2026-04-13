@@ -1,5 +1,5 @@
--- =====================================================
--- STEP 1: Add Middeniya Manufacturing Roles to `roles` table
+﻿-- =====================================================
+-- STEP 1: Add Middeniya Manufacturing Roles to oles table
 -- =====================================================
 
 INSERT INTO roles (name, description) 
@@ -17,6 +17,10 @@ ON DUPLICATE KEY UPDATE description = 'Quality Control access';
 INSERT INTO roles (name, description) 
 VALUES ('ROLE_INV_ASSEMBLE', 'Assembly line access')
 ON DUPLICATE KEY UPDATE description = 'Assembly line access';
+
+INSERT INTO roles (name, description) 
+VALUES ('ROLE_INV_PRIMARY', 'Primary Finishing access')
+ON DUPLICATE KEY UPDATE description = 'Primary Finishing access';
 
 -- =====================================================
 -- STEP 2: Verify the roles were inserted

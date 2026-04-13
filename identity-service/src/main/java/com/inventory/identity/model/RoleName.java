@@ -16,5 +16,6 @@ public enum RoleName {
     ROLE_INV_STOCK_KEEPER, // Stock management
     ROLE_INV_MOLDING,      // Molding department
     ROLE_INV_QC,           // Quality Control
-    ROLE_INV_ASSEMBLE      // Assembly line
+    ROLE_INV_ASSEMBLE,     // Assembly line
+    ROLE_INV_PRIMARY       // Primary finishing
 }
