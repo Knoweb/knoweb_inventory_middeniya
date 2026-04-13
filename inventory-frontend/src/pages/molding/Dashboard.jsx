@@ -29,11 +29,7 @@ const MoldingDashboard = () => {
       setBatches(moldingBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
-      // Fallback dummy data if backend is not yet implemented fully or giving errors for this new API
-      setBatches([
-        { id: '1', batchNumber: 'BATCH-PL-001', status: 'WIP_MOLDING', quantity: 500, itemName: 'Plastic Mold Base' },
-        { id: '2', batchNumber: 'BATCH-PL-002', status: 'WIP_MOLDING', quantity: 800, itemName: 'Cap Enclosures' }
-      ]);
+      setBatches([]);
     } finally {
       setLoading(false);
     }
@@ -73,9 +69,8 @@ const MoldingDashboard = () => {
       fetchWipBatches();
     } catch (error) {
       console.error('Error advancing batch:', error);
-      showToast('API not fully implemented on backend yet. (MOCK SUCCESS)', 'warning');
+      showToast('Failed to advance batch to Assembly.', 'error');
       setShowAdvanceModal(false);
-      setBatches(prev => prev.filter(b => b.id !== selectedBatch.id));
     }
   };
 

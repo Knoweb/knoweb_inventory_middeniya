@@ -29,11 +29,7 @@ const PrimaryDashboard = () => {
       setBatches(primaryBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
-      // Fallback dummy data if backend is not yet implemented fully
-      setBatches([
-        { id: '10', batchNumber: 'BATCH-PRI-055', status: 'WIP_PRIMARY', quantity: 200, itemName: 'Completed Fan Motor' },
-        { id: '11', batchNumber: 'BATCH-PRI-056', status: 'WIP_PRIMARY', quantity: 150, itemName: 'Finished Light Controller' }
-      ]);
+      setBatches([]);
     } finally {
       setLoading(false);
     }
@@ -73,9 +69,8 @@ const PrimaryDashboard = () => {
       fetchWipBatches();
     } catch (error) {
       console.error('Error advancing batch:', error);
-      showToast('API not fully implemented on backend yet. (MOCK SUCCESS)', 'warning');
+      showToast('Failed to advance batch to Stores.', 'error');
       setShowAdvanceModal(false);
-      setBatches(prev => prev.filter(b => b.id !== selectedBatch.id));
     }
   };
 

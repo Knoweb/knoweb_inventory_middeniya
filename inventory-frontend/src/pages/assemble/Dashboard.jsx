@@ -29,11 +29,7 @@ const AssembleDashboard = () => {
       setBatches(assembleBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
-      // Fallback dummy data if backend is not yet implemented fully or giving errors
-      setBatches([
-        { id: '3', batchNumber: 'BATCH-ASM-010', status: 'WIP_ASSEMBLE', quantity: 450, itemName: 'Fan Motor Unit' },
-        { id: '4', batchNumber: 'BATCH-ASM-011', status: 'WIP_ASSEMBLE', quantity: 320, itemName: 'Lighting Circuit Controller' }
-      ]);
+      setBatches([]);
     } finally {
       setLoading(false);
     }
@@ -73,9 +69,8 @@ const AssembleDashboard = () => {
       fetchWipBatches();
     } catch (error) {
       console.error('Error advancing batch:', error);
-      showToast('API not fully implemented on backend yet. (MOCK SUCCESS)', 'warning');
+      showToast('Failed to advance batch to Primary Finishing.', 'error');
       setShowAdvanceModal(false);
-      setBatches(prev => prev.filter(b => b.id !== selectedBatch.id));
     }
   };
 
