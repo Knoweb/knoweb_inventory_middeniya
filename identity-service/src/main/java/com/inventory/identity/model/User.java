@@ -51,7 +51,7 @@ public class User {
     @Column(name = "branch_id")
     private Long branchId;  // Branch assignment
     
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "user_roles",
         joinColumns = @JoinColumn(name = "user_id"),
