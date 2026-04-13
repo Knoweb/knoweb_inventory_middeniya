@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info, Plus } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -13,12 +13,46 @@ const MoldingDashboard = () => {
   
   // Modal states
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createFormData, setCreateFormData] = useState({
+    productId: 1,
+    batchNumber: "BATCH-PL-" + Math.floor(Math.random() * 1000),
+    quantity: 500,
+    itemName: "Plastic Mold Base",
+    workOrderNumber: "WO-" + Math.floor(Math.random() * 1000)
+  });
+  
   const [formData, setFormData] = useState({
     processedQuantity: 0,
     scrapQuantity: 0,
     qualityCheckPassed: true,
     remarks: ''
   });
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        productId: parseInt(createFormData.productId),
+        productType: 'WIP',
+        wipStatus: 'WIP_MOLDING',
+        workOrderNumber: createFormData.workOrderNumber,
+        batchNumber: createFormData.batchNumber,
+        manufacturingAttributes: {
+          quantity: parseInt(createFormData.quantity),
+          itemName: createFormData.itemName,
+          batchNumber: createFormData.batchNumber
+        }
+      };
+      await manufacturingService.create(payload);
+      showToast('WIP Batch successfully started in Molding!', 'success');
+      setShowCreateModal(false);
+      fetchWipBatches();
+    } catch (error) {
+      console.error('Error creating batch:', error);
+      showToast('Failed to start new molding batch.', 'error');
+    }
+  };
 
   const fetchWipBatches = async () => {
     try {
@@ -89,12 +123,20 @@ const MoldingDashboard = () => {
           <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none uppercase italic">Injection Molding</h1>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mt-3 ml-1">Work in Progress (WIP) Tracking</p>
         </div>
-        <button
-          onClick={fetchWipBatches}
-          className="p-4 bg-white text-slate-400 hover:text-indigo-600 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 transition-all active:scale-95"
-        >
-          <RefreshCw size={20} />
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 py-4 bg-indigo-600 text-white hover:bg-slate-900 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2"
+          >
+            <Plus size={16} /> Start New Batch
+          </button>
+          <button
+            onClick={fetchWipBatches}
+            className="p-4 bg-white text-slate-400 hover:text-indigo-600 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-200 transition-all active:scale-95"
+          >
+            <RefreshCw size={20} />
+          </button>
+        </div>
       </header>
 
       <div className="bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden p-8">
@@ -123,11 +165,11 @@ const MoldingDashboard = () => {
                   <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
                     {batch.status || 'WIP_MOLDING'}
                   </div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty: {batch.quantity}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty: {batch.manufacturingAttributes?.quantity || batch.quantity || 0}</span>
                 </div>
                 
-                <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.batchNumber || `BATCH-${batch.id}`}</h3>
-                <p className="text-sm font-semibold text-slate-500 mb-8">{batch.itemName || 'Raw Material Item'}</p>
+                <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}</h3>
+                <p className="text-sm font-semibold text-slate-500 mb-8">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Raw Material Item'}</p>
                 
                 <div className="mt-auto">
                   <button 
@@ -219,6 +261,47 @@ const MoldingDashboard = () => {
                 >
                   <ArrowRight size={16} />
                   Confirm & Advance
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={(e) => e.target === e.currentTarget && setShowCreateModal(false)}>
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 border border-white">
+            <header className="px-8 py-6 border-b border-indigo-50 flex items-center gap-4 bg-white shrink-0">
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shadow-sm border border-indigo-100">
+                <Box size={22} className="ml-0.5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-800 tracking-tight leading-none uppercase italic">Start Molding Batch</h2>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1.5 italic">Initialize New WIP Item from Raw Materials</p>
+              </div>
+            </header>
+
+            <form onSubmit={handleCreateSubmit} className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Batch Number</label>
+                  <input type="text" required className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 text-center"
+                    value={createFormData.batchNumber} onChange={(e) => setCreateFormData({...createFormData, batchNumber: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Quantity</label>
+                  <input type="number" required min="1" className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 text-center"
+                    value={createFormData.quantity} onChange={(e) => setCreateFormData({...createFormData, quantity: e.target.value})} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Work Order Name / Output Item</label>
+                <input type="text" required className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400"
+                  value={createFormData.itemName} onChange={(e) => setCreateFormData({...createFormData, itemName: e.target.value})} />
+              </div>
+              <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setShowCreateModal(false)} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-slate-600">Cancel</button>
+                <button type="submit" className="px-10 py-4 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-indigo-200 hover:bg-slate-900 transition-transform active:scale-95 flex items-center gap-2">
+                  Launch Batch <ArrowRight size={16} />
                 </button>
               </div>
             </form>
