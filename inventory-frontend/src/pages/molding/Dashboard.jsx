@@ -87,19 +87,25 @@ const MoldingDashboard = () => {
   const handleAdvanceSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
-        currentStage: 'INJECTION_MOLDING',
-        targetStage: 'ASSEMBLE',
-        processedQuantity: parseInt(formData.processedQuantity),
-        scrapQuantity: parseInt(formData.scrapQuantity),
-        operatorId: user?.id || 'EMP-UNKNOWN',
-        qualityCheckPassed: formData.qualityCheckPassed,
-        remarks: formData.remarks
+      const processed = parseInt(formData.processedQuantity) || 0;
+      const scrap = parseInt(formData.scrapQuantity) || 0;
+      const validQty = Math.max(0, processed - scrap); // Update balance
+
+      // Update the quantity logic for backend before changing the status to advance it
+      const updatedBatch = {
+        ...selectedBatch,
+        manufacturingAttributes: {
+          ...(selectedBatch.manufacturingAttributes || {}),
+          quantity: validQty,
+          scrapRecorded: scrap 
+        }
       };
+      
+      await manufacturingService.update(selectedBatch.id, updatedBatch);
       
       const newStatus = formData.qualityCheckPassed ? 'WIP_ASSEMBLE' : 'REWORK';
       await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
-      showToast('Batch successfully advanced to Assembly!', 'success');
+      showToast(`Batch successfully advanced to Assembly with ${validQty} good pieces!`, 'success');
       setShowAdvanceModal(false);
       fetchWipBatches();
     } catch (error) {

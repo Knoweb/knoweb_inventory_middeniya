@@ -53,19 +53,25 @@ const PrimaryDashboard = () => {
   const handleAdvanceSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
-        currentStage: 'PRIMARY',
-        targetStage: 'FINISHED_GOODS', // Assuming next is finished goods or QC
-        processedQuantity: parseInt(formData.processedQuantity),
-        scrapQuantity: parseInt(formData.scrapQuantity),
-        operatorId: user?.id || 'EMP-UNKNOWN',
-        qualityCheckPassed: formData.qualityCheckPassed,
-        remarks: formData.remarks
+      const processed = parseInt(formData.processedQuantity) || 0;
+      const scrap = parseInt(formData.scrapQuantity) || 0;
+      const validQty = Math.max(0, processed - scrap); // Update balance
+
+      // Update the batch quantity for final goods
+      const updatedBatch = {
+        ...selectedBatch,
+        manufacturingAttributes: {
+          ...(selectedBatch.manufacturingAttributes || {}),
+          quantity: validQty,
+          scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap // store history
+        }
       };
+      
+      await manufacturingService.update(selectedBatch.id, updatedBatch);
       
       const newStatus = formData.qualityCheckPassed ? 'FINISHED_GOOD' : 'REWORK';
       await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
-      showToast('Batch successfully finished and moved to Inventory!', 'success');
+      showToast(`Batch successfully finished and moved to Inventory with ${validQty} units!`, 'success');
       setShowAdvanceModal(false);
       fetchWipBatches();
     } catch (error) {

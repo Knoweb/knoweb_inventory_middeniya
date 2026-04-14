@@ -53,19 +53,25 @@ const AssembleDashboard = () => {
   const handleAdvanceSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
-        currentStage: 'ASSEMBLE',
-        targetStage: 'PRIMARY',
-        processedQuantity: parseInt(formData.processedQuantity),
-        scrapQuantity: parseInt(formData.scrapQuantity),
-        operatorId: user?.id || 'EMP-UNKNOWN',
-        qualityCheckPassed: formData.qualityCheckPassed,
-        remarks: formData.remarks
+      const processed = parseInt(formData.processedQuantity) || 0;
+      const scrap = parseInt(formData.scrapQuantity) || 0;
+      const validQty = Math.max(0, processed - scrap); // Update balance
+
+      // Update the backend entity quantity directly before status change
+      const updatedBatch = {
+        ...selectedBatch,
+        manufacturingAttributes: {
+          ...(selectedBatch.manufacturingAttributes || {}),
+          quantity: validQty,
+          scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap // accumulate total scrap
+        }
       };
+      
+      await manufacturingService.update(selectedBatch.id, updatedBatch);
       
       const newStatus = formData.qualityCheckPassed ? 'WIP_PRIMARY' : 'REWORK';
       await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
-      showToast('Batch successfully advanced to Primary Finishing!', 'success');
+      showToast(`Batch successfully advanced to Primary Finishing with ${validQty} good pieces!`, 'success');
       setShowAdvanceModal(false);
       fetchWipBatches();
     } catch (error) {
