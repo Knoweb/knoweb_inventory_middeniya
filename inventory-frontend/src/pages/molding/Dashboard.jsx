@@ -12,6 +12,7 @@ const MoldingDashboard = () => {
   const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
+  const [viewHistoryBatch, setViewHistoryBatch] = useState(null);
   
   // Modal states
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
@@ -201,7 +202,11 @@ const MoldingDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {historyBatches.map((batch, idx) => (
-                <div key={batch.id || idx} className="bg-slate-50 border border-slate-100 rounded-3xl p-6 shadow-md transition-all group flex flex-col">
+                <div 
+                  key={batch.id || idx} 
+                  onClick={() => setViewHistoryBatch(batch)}
+                  className="bg-slate-50 cursor-pointer border border-slate-100 rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 hover:border-indigo-200 group flex flex-col"
+                >
                   <div className="flex justify-between items-start mb-4">
                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
                       {batch.status || batch.wipStatus || 'Moved to Assembly'}
@@ -209,6 +214,11 @@ const MoldingDashboard = () => {
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 line-through decoration-slate-300 decoration-2 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}</h3>
                   <p className="text-sm font-semibold text-slate-500 mb-4">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Material Item'}</p>
+                  
+                  <div className="mt-auto pt-4 border-t border-slate-200 flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">View Details</span>
+                    <ArrowRight size={14} className="text-indigo-500" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -366,6 +376,61 @@ const MoldingDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {viewHistoryBatch && (
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={(e) => e.target === e.currentTarget && setViewHistoryBatch(null)}>
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 border border-white">
+            <header className="px-8 py-6 border-b border-slate-50 flex items-center gap-4 bg-slate-50/50 shrink-0">
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
+                <History size={22} className="ml-0.5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-800 tracking-tight leading-none uppercase italic">Process History</h2>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1.5 italic">Molding Phase Details</p>
+              </div>
+            </header>
+
+            <div className="p-8 space-y-6 bg-white">
+              <div className="flex flex-col mb-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Batch Number / Work Order</span>
+                <span className="text-lg font-black text-slate-800">{viewHistoryBatch.manufacturingAttributes?.batchNumber || viewHistoryBatch.batchNumber || viewHistoryBatch.workOrderNumber || `BATCH-${viewHistoryBatch.id}`}</span>
+              </div>
+              
+              <div className="flex flex-col mb-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Product Data</span>
+                <span className="text-sm font-bold text-slate-600 bg-slate-50 px-4 py-3 rounded-xl border border-slate-100 block">{viewHistoryBatch.manufacturingAttributes?.itemName || viewHistoryBatch.itemName || 'Material Item'}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4 py-4 border-y border-slate-50">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Original Qty</span>
+                  <span className="text-xl font-black text-slate-700">{viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Scrapped Qty</span>
+                  <span className="text-xl font-black text-rose-500">{viewHistoryBatch.manufacturingAttributes?.scrapRecorded || viewHistoryBatch.manufacturingAttributes?.scrapQuantity || 0}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mt-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-full">
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-black text-emerald-600/70 uppercase tracking-widest">Progress</span>
+                    <span className="block text-sm font-bold text-emerald-700 uppercase tracking-tight">Passed Molding</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button onClick={() => setViewHistoryBatch(null)} className="w-full py-4 text-[10px] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl uppercase tracking-[0.2em] transition-all">Close</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
