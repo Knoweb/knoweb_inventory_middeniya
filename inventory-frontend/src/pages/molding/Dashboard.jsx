@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info, Plus } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info, Plus, History, PlayCircle } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -8,6 +8,8 @@ const MoldingDashboard = () => {
   const { user } = useAuth();
   const { showToast } = useNotification();
   const [batches, setBatches] = useState([]);
+  const [historyBatches, setHistoryBatches] = useState([]);
+  const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   
@@ -61,6 +63,16 @@ const MoldingDashboard = () => {
       // Filter for batches currently in INJECTION_MOLDING stage
       const moldingBatches = (response.data || []).filter(b => b.currentStage === 'INJECTION_MOLDING' || b.stage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING' || b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING');
       setBatches(moldingBatches);
+
+      // Identify history items (items that originated or passed through molding, typically WIP_ASSEMBLE, WIP_PRIMARY, FINISHED_GOOD)
+      const passedBatches = (response.data || []).filter(b => 
+        (b.manufacturingAttributes && b.manufacturingAttributes.batchNumber) &&
+        b.wipStatus !== 'INJECTION_MOLDING' && 
+        b.wipStatus !== 'WIP_MOLDING' && 
+        b.currentStage !== 'INJECTION_MOLDING' &&
+        b.status !== 'WIP_MOLDING'
+      );
+      setHistoryBatches(passedBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
       setBatches([]);
@@ -156,9 +168,52 @@ const MoldingDashboard = () => {
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Pending and Processing Batches</p>
             </div>
           </div>
+          <div className="flex space-x-2 bg-slate-100/80 p-1.5 rounded-2xl w-full max-w-xs border border-slate-200/60">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-titles rounded-xl transition-all duration-300 ${
+                activeTab === 'active'
+                  ? 'bg-white text-indigo-600 shadow-md shadow-indigo-100'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-titles rounded-xl transition-all duration-300 ${
+                activeTab === 'history'
+                  ? 'bg-white text-indigo-600 shadow-md shadow-indigo-100'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              History
+            </button>
+          </div>
         </div>
         
-        {batches.length === 0 ? (
+        {activeTab === 'history' ? (
+          historyBatches.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-slate-300 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
+              <History size={48} className="mb-4 opacity-20" />
+              <p className="text-xs font-black uppercase tracking-widest opacity-40">No History Yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {historyBatches.map((batch, idx) => (
+                <div key={batch.id || idx} className="bg-slate-50 border border-slate-100 rounded-3xl p-6 shadow-md transition-all group flex flex-col">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                      {batch.status || batch.wipStatus || 'Moved to Assembly'}
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 line-through decoration-slate-300 decoration-2 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}</h3>
+                  <p className="text-sm font-semibold text-slate-500 mb-4">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Material Item'}</p>
+                </div>
+              ))}
+            </div>
+          )
+        ) : batches.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-300 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
             <CheckCircle2 size={48} className="mb-4 opacity-20" />
             <p className="text-xs font-black uppercase tracking-widest opacity-40">No Batches in Molding phase</p>
