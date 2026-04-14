@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import apiClient from '../../services/api';
+import apiClient, { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert, AlertTriangle, CheckCircle, Trash2, X, FileEdit, Info, AlertCircle } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const QCDashboard = () => {
   const fetchPendingInspections = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/api/inventory/qc-hold');
+      const res = await manufacturingService.getPendingInspection();
       setInspections(res.data);
     } catch (err) {
       console.error("QC API unavailable.", err);
@@ -48,9 +48,12 @@ const QCDashboard = () => {
     
     try {
       setSubmitting(true);
-      await apiClient.post('/api/inventory/qc-decide/' + selectedItem.id, {
-        action: actionType,
+      await manufacturingService.updateInspection(selectedItem.id, {
+        status: actionType === "SCRAP" ? "FAILED" : "PASSED",
+        grade: actionType === "SCRAP" ? "REJECT" : "B",
+        defectCount: selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0,
         remarks: remarks,
+        action: actionType,
         processedBy: user?.username || 'QC_ADMIN'
       });
       setInspections(prev => prev.filter(i => i.id !== selectedItem.id));
@@ -110,10 +113,10 @@ const QCDashboard = () => {
             <tbody>
                 {inspections.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-700">{item.poNumber}</td>
-                    <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium shadow-sm">{item.itemCode}</span></td>
-                    <td className="px-6 py-4 font-bold text-red-500 text-lg">{item.quantityDamaged}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{item.reason}</td>
+                    <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || item.manufacturingAttributes?.poNumber || `PO-${item.id}`}</td>
+                    <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium shadow-sm">{item.materialCode || item.itemName || item.manufacturingAttributes?.itemName || 'WIP-ITEM'}</span></td>
+                    <td className="px-6 py-4 font-bold text-red-500 text-lg">{item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || item.notes || item.reason || 'Pending Inspection'}</td>
                     <td className="px-6 py-4 flex gap-2 justify-end">
                         <button onClick={() => openDecisionModal(item, "SCRAP")} className="bg-white text-red-600 border border-red-200 px-3 py-1.5 flex items-center gap-1.5 rounded hover:bg-red-50 text-sm font-medium transition-colors shadow-sm">
                             <Trash2 className="w-4 h-4" /> Scrap
@@ -155,9 +158,9 @@ const QCDashboard = () => {
               <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-4 mb-5 flex items-start gap-3">
                   <Info className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                   <div>
-                      <p className="text-sm text-gray-800 font-medium">Reviewing <span className="text-red-500 font-bold">{selectedItem.quantityDamaged}</span> Damaged Items</p>
-                      <p className="text-xs text-gray-600 mt-1">PO: <strong>{selectedItem.poNumber}</strong> &nbsp;|&nbsp; Code: <strong>{selectedItem.itemCode}</strong></p>
-                      <p className="text-xs bg-amber-100/50 text-amber-800 inline-block px-2 py-0.5 rounded mt-2 border border-amber-200">Reason: {selectedItem.reason}</p>
+                      <p className="text-sm text-gray-800 font-medium">Reviewing <span className="text-red-500 font-bold">{selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0}</span> Damaged Items</p>
+                      <p className="text-xs text-gray-600 mt-1">PO: <strong>{selectedItem.workOrderNumber || selectedItem.manufacturingAttributes?.poNumber || `PO-${selectedItem.id}`}</strong> &nbsp;|&nbsp; Code: <strong>{selectedItem.materialCode || selectedItem.itemName || selectedItem.manufacturingAttributes?.itemName || 'WIP-ITEM'}</strong></p>
+                      <p className="text-xs bg-amber-100/50 text-amber-800 inline-block px-2 py-0.5 rounded mt-2 border border-amber-200">Reason: {selectedItem.defectDescription || selectedItem.notes || selectedItem.reason || 'Pending Inspection'}</p>
                   </div>
               </div>
 
