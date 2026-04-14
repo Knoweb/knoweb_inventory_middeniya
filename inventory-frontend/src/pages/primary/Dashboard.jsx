@@ -129,6 +129,28 @@ const PrimaryDashboard = () => {
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Pending Final Packaging</p>
             </div>
           </div>
+          <div className="flex space-x-2 bg-slate-100/80 p-1.5 rounded-2xl w-full max-w-xs border border-slate-200/60">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${
+                activeTab === 'active'
+                  ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${
+                activeTab === 'history'
+                  ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+              }`}
+            >
+              History
+            </button>
+          </div>
         </div>
         
         {activeTab === 'history' ? (
