@@ -220,7 +220,16 @@ public class ManufacturingFeatureService {
         } else if ("PASSED".equals(inspectionStatus)) {
             // If approved to return to stock, we clear the rework flag and set as finished good or repaired
             product.setReworkRequired(false);
-            product.setWipStatus("FINISHED_GOOD");
+            
+            // Route to the correct next stage based on where it came from
+            String desc = product.getDefectDescription();
+            if (desc != null && desc.contains("Molding")) {
+                product.setWipStatus("WIP_ASSEMBLE");
+            } else if (desc != null && desc.contains("Assembling")) {
+                product.setWipStatus("WIP_PRIMARY");
+            } else {
+                product.setWipStatus("FINISHED_GOOD");
+            }
         }
         
         log.info("Updated inspection for product {}: status={}, grade={}, defects={}", 
