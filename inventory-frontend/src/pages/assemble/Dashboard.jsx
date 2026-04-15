@@ -92,7 +92,7 @@ const AssembleDashboard = () => {
           ...updatedBatch,
           inspectionStatus: 'PENDING',
           defectDescription: formData.remarks || 'Sent to Rework/QC from Assembling',
-          defectCount: scrap
+          defectCount: scrap > 0 ? scrap : processed
         };
         await manufacturingService.update(selectedBatch.id, qcBatch);
       }

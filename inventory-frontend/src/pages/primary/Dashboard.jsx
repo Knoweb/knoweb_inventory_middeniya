@@ -91,7 +91,7 @@ const PrimaryDashboard = () => {
           ...updatedBatch,
           inspectionStatus: 'PENDING',
           defectDescription: formData.remarks || 'Sent to QC from Primary Finishing',
-          defectCount: scrap
+          defectCount: scrap > 0 ? scrap : processed
         };
         await manufacturingService.update(selectedBatch.id, qcBatch);
       }

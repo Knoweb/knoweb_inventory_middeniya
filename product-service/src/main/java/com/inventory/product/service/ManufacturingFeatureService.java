@@ -64,6 +64,8 @@ public class ManufacturingFeatureService {
         existing.setOverheadCost(manufacturingProduct.getOverheadCost());
         existing.setQualityGrade(manufacturingProduct.getQualityGrade());
         existing.setInspectionStatus(manufacturingProduct.getInspectionStatus());
+        existing.setDefectCount(manufacturingProduct.getDefectCount());
+        existing.setDefectDescription(manufacturingProduct.getDefectDescription());
         existing.setManufacturingAttributes(manufacturingProduct.getManufacturingAttributes());
         
         return manufacturingProductRepository.save(existing);
