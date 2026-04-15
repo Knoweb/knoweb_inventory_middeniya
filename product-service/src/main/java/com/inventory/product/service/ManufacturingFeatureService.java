@@ -216,6 +216,11 @@ public class ManufacturingFeatureService {
         
         if ("FAILED".equals(inspectionStatus) && defectCount != null && defectCount > 0) {
             product.setReworkRequired(true);
+            product.setWipStatus("SCRAPPED"); // Mark as completely scrapped
+        } else if ("PASSED".equals(inspectionStatus)) {
+            // If approved to return to stock, we clear the rework flag and set as finished good or repaired
+            product.setReworkRequired(false);
+            product.setWipStatus("FINISHED_GOOD");
         }
         
         log.info("Updated inspection for product {}: status={}, grade={}, defects={}", 
