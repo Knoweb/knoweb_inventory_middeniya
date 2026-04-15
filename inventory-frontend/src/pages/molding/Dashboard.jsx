@@ -88,8 +88,9 @@ const MoldingDashboard = () => {
 
   const handleOpenAdvance = (batch) => {
     setSelectedBatch(batch);
+    const batchQty = batch.manufacturingAttributes?.quantity || batch.quantity || 0;
     setFormData({
-      processedQuantity: batch.quantity || 0,
+      processedQuantity: batchQty,
       scrapQuantity: 0,
       qualityCheckPassed: true,
       remarks: ''
