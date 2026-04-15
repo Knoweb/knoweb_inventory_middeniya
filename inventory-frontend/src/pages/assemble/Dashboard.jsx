@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowRight, Play, CheckCircle2, Wrench, Info, History, PlayCircle } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, CheckCircle2, Wrench, Info, History, PlayCircle, Clock } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -217,7 +217,11 @@ const AssembleDashboard = () => {
                 </div>
                 
                 <h3 className="text-xl font-bold text-slate-800 mb-1 relative z-0">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || `BATCH-${batch.id}`}</h3>
-                <p className="text-sm font-semibold text-slate-500 mb-8 relative z-0">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Assembled Component'}</p>
+                <p className="text-sm font-semibold text-slate-500 mb-2 relative z-0">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Assembled Component'}</p>
+                <p className="text-[9px] font-semibold text-slate-400 mb-6 flex items-center gap-1 relative z-0">
+                  <Clock size={12} />
+                  {batch.wipStartDate ? new Date(batch.wipStartDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                </p>
                 
                 <div className="mt-auto relative z-0">
                   <button 

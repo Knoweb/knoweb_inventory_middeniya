@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowRight, Play, CheckCircle2, Sparkles, Info, History, PlayCircle } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, CheckCircle2, Sparkles, Info, History, PlayCircle, Clock } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -211,7 +211,11 @@ const PrimaryDashboard = () => {
                 
                 {/* Fixed the escaping issue securely for the batch number display */}
                 <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || `BATCH-${batch.id}`}</h3>
-                <p className="text-sm font-semibold text-slate-500 mb-8">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Unit'}</p>
+                <p className="text-sm font-semibold text-slate-500 mb-2">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}</p>
+                <p className="text-[9px] font-semibold text-slate-400 mb-6 flex items-center gap-1">
+                  <Clock size={12} />
+                  {batch.wipStartDate ? new Date(batch.wipStartDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                </p>
                 
                 <div className="mt-auto">
                   <button 
