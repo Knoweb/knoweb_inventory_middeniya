@@ -1,11 +1,13 @@
 ﻿import React, { useState, useEffect } from 'react';
 import apiClient, { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldAlert, AlertTriangle, CheckCircle, Trash2, X, FileEdit, Info, AlertCircle } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle, Trash2, X, FileEdit, Info, AlertCircle, History } from 'lucide-react';
 
 const QCDashboard = () => {
   const { user } = useAuth();
   const [inspections, setInspections] = useState([]);
+  const [completedInspections, setCompletedInspections] = useState([]);
+  const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(false);
   
   // Modal states
@@ -19,11 +21,18 @@ const QCDashboard = () => {
     try {
       setLoading(true);
       const res = await manufacturingService.getPendingInspection();
-      setInspections(res.data);
+      const allItems = res.data || [];
+      
+      // Separate pending (inspectionStatus = PENDING) vs completed (PASSED, FAILED)
+      const pending = allItems.filter(i => i.inspectionStatus === 'PENDING');
+      const completed = allItems.filter(i => i.inspectionStatus === 'PASSED' || i.inspectionStatus === 'FAILED');
+      
+      setInspections(pending);
+      setCompletedInspections(completed);
     } catch (err) {
       console.error("QC API unavailable.", err);
-      // Hardcoded data removed - waiting for real backend
       setInspections([]);
+      setCompletedInspections([]);
     } finally {
       setLoading(false);
     }
@@ -86,49 +95,104 @@ const QCDashboard = () => {
                </span>
              )}
           </h2>
-          <button onClick={fetchPendingInspections} className="text-sm text-indigo-600 hover:underline font-medium">
-            Refresh Data
-          </button>
+          <div className="flex gap-4 items-center">
+            <div className="flex space-x-2 bg-gray-100 p-1.5 rounded-lg border border-gray-200">
+              <button
+                onClick={() => setActiveTab('active')}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide rounded transition-all ${
+                  activeTab === 'active'
+                    ? 'bg-white text-indigo-600 shadow-md'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide rounded transition-all ${
+                  activeTab === 'history'
+                    ? 'bg-white text-indigo-600 shadow-md'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                History
+              </button>
+            </div>
+            <button onClick={fetchPendingInspections} className="text-sm text-indigo-600 hover:underline font-medium">
+              Refresh Data
+            </button>
+          </div>
         </div>
         
         {loading ? (
              <div className="py-12 flex justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>
-        ) : inspections.length === 0 ? (
-             <div className="py-12 text-center text-gray-500 flex flex-col items-center">
-                <CheckCircle className="w-12 h-12 text-emerald-400 mb-3" />
-                <p className="text-lg font-medium text-gray-700">No pending QC inspections found.</p>
-                <p className="text-sm mt-1 text-gray-500">All incoming inventory is cleared and matched.</p>
-             </div>
-        ) : (
+        ) : activeTab === 'history' ? (
+          completedInspections.length === 0 ? (
+            <div className="py-12 text-center text-gray-500 flex flex-col items-center">
+              <History className="w-12 h-12 text-gray-300 mb-3" />
+              <p className="text-lg font-medium text-gray-700">No inspection history yet.</p>
+              <p className="text-sm mt-1 text-gray-500">Completed inspections will appear here.</p>
+            </div>
+          ) : (
             <table className="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
-            <thead className="bg-slate-100 text-left border-b border-slate-200">
+              <thead className="bg-slate-100 text-left border-b border-slate-200">
                 <tr>
-                    <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
-                    <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item Received</th>
-                    <th className="px-6 py-4 font-bold text-red-600 uppercase text-xs tracking-wider flex items-center gap-1.5"><AlertTriangle className="w-4 h-4"/> Quantity Damaged</th>
-                    <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
-                    <th className="px-6 py-4 text-right font-semibold text-gray-600 uppercase text-xs tracking-wider">Action / Decide</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Decision</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">QC Grade</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
                 </tr>
+              </thead>
+              <tbody>
+                {completedInspections.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
+                    <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || `PO-${item.id}`}</td>
+                    <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium">{item.materialCode || item.itemName || 'Item'}</span></td>
+                    <td className="px-6 py-4"><span className={`text-xs font-bold uppercase px-3 py-1 rounded ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}</span></td>
+                    <td className="px-6 py-4 font-semibold text-gray-700">{item.qualityGrade || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || 'N/A'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        ) : inspections.length === 0 ? (
+          <div className="py-12 text-center text-gray-500 flex flex-col items-center">
+            <CheckCircle className="w-12 h-12 text-emerald-400 mb-3" />
+            <p className="text-lg font-medium text-gray-700">No pending QC inspections found.</p>
+            <p className="text-sm mt-1 text-gray-500">All incoming inventory is cleared and matched.</p>
+          </div>
+        ) : (
+          <table className="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
+            <thead className="bg-slate-100 text-left border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
+                <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item Received</th>
+                <th className="px-6 py-4 font-bold text-red-600 uppercase text-xs tracking-wider flex items-center gap-1.5"><AlertTriangle className="w-4 h-4"/> Quantity Damaged</th>
+                <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
+                <th className="px-6 py-4 text-right font-semibold text-gray-600 uppercase text-xs tracking-wider">Action / Decide</th>
+              </tr>
             </thead>
             <tbody>
-                {inspections.map((item) => (
+              {inspections.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || item.manufacturingAttributes?.poNumber || `PO-${item.id}`}</td>
-                    <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium shadow-sm">{item.materialCode || item.itemName || item.manufacturingAttributes?.itemName || 'WIP-ITEM'}</span></td>
-                    <td className="px-6 py-4 font-bold text-red-500 text-lg">{item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || item.notes || item.reason || 'Pending Inspection'}</td>
-                    <td className="px-6 py-4 flex gap-2 justify-end">
-                        <button onClick={() => openDecisionModal(item, "SCRAP")} className="bg-white text-red-600 border border-red-200 px-3 py-1.5 flex items-center gap-1.5 rounded hover:bg-red-50 text-sm font-medium transition-colors shadow-sm">
-                            <Trash2 className="w-4 h-4" /> Scrap
-                        </button>
-                        <button onClick={() => openDecisionModal(item, "REPAIR")} className="bg-indigo-600 text-white border border-indigo-700 px-4 py-1.5 flex items-center gap-1.5 rounded hover:bg-indigo-700 text-sm font-medium transition-colors shadow-sm">
-                            <FileEdit className="w-4 h-4" /> Add to Stock
-                        </button>
-                    </td>
+                  <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || item.manufacturingAttributes?.poNumber || `PO-${item.id}`}</td>
+                  <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium shadow-sm">{item.materialCode || item.itemName || item.manufacturingAttributes?.itemName || 'WIP-ITEM'}</span></td>
+                  <td className="px-6 py-4 font-bold text-red-500 text-lg">{item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || item.notes || item.reason || 'Pending Inspection'}</td>
+                  <td className="px-6 py-4 flex gap-2 justify-end">
+                    <button onClick={() => openDecisionModal(item, "SCRAP")} className="bg-white text-red-600 border border-red-200 px-3 py-1.5 flex items-center gap-1.5 rounded hover:bg-red-50 text-sm font-medium transition-colors shadow-sm">
+                      <Trash2 className="w-4 h-4" /> Scrap
+                    </button>
+                    <button onClick={() => openDecisionModal(item, "REPAIR")} className="bg-indigo-600 text-white border border-indigo-700 px-4 py-1.5 flex items-center gap-1.5 rounded hover:bg-indigo-700 text-sm font-medium transition-colors shadow-sm">
+                      <FileEdit className="w-4 h-4" /> Add to Stock
+                    </button>
+                  </td>
                 </tr>
-                ))}
+              ))}
             </tbody>
-            </table>
+          </table>
         )}
       </div>
 
