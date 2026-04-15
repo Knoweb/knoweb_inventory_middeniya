@@ -28,6 +28,12 @@ public class ManufacturingFeatureService {
     public ManufacturingProduct createManufacturingProduct(ManufacturingProduct manufacturingProduct) {
         log.info("Creating manufacturing product for productId: {}, type: {}", 
             manufacturingProduct.getProductId(), manufacturingProduct.getProductType());
+        
+        // Set wipStartDate if not already set
+        if (manufacturingProduct.getWipStartDate() == null && manufacturingProduct.getWipStatus() != null) {
+            manufacturingProduct.setWipStartDate(LocalDateTime.now());
+        }
+        
         return manufacturingProductRepository.save(manufacturingProduct);
     }
     
@@ -154,11 +160,14 @@ public class ManufacturingFeatureService {
         String oldStatus = product.getWipStatus();
         product.setWipStatus(newStatus);
         
+        // Set start date if not already set (for any WIP status)
+        if (product.getWipStartDate() == null && newStatus != null && !newStatus.isEmpty()) {
+            product.setWipStartDate(LocalDateTime.now());
+        }
+        
         if ("COMPLETED".equals(newStatus)) {
             product.setWipCompletionDate(LocalDateTime.now());
             product.setCompletionPercentage(java.math.BigDecimal.valueOf(100));
-        } else if ("IN_PROGRESS".equals(newStatus) && product.getWipStartDate() == null) {
-            product.setWipStartDate(LocalDateTime.now());
         }
         
         log.info("Updated WIP status for product {}: {} -> {}", id, oldStatus, newStatus);
