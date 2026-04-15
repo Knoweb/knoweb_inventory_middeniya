@@ -117,6 +117,17 @@ const MoldingDashboard = () => {
       await manufacturingService.update(selectedBatch.id, updatedBatch);
       
       const newStatus = formData.qualityCheckPassed ? 'WIP_ASSEMBLE' : 'REWORK';
+      
+      if (newStatus === 'REWORK') {
+        const qcBatch = {
+          ...updatedBatch,
+          inspectionStatus: 'PENDING',
+          defectDescription: formData.remarks || 'Sent to Rework/QC from Molding',
+          defectCount: scrap
+        };
+        await manufacturingService.update(selectedBatch.id, qcBatch);
+      }
+      
       await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast(`Batch successfully advanced to Assembly with ${validQty} good pieces!`, 'success');
       setShowAdvanceModal(false);

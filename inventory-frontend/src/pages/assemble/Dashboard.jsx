@@ -85,6 +85,18 @@ const AssembleDashboard = () => {
       await manufacturingService.update(selectedBatch.id, updatedBatch);
       
       const newStatus = formData.qualityCheckPassed ? 'WIP_PRIMARY' : 'REWORK';
+      
+      // If it's rework, flag it as pending inspection so it shows in QC
+      if (newStatus === 'REWORK') {
+        const qcBatch = {
+          ...updatedBatch,
+          inspectionStatus: 'PENDING',
+          defectDescription: formData.remarks || 'Sent to Rework/QC from Assembling',
+          defectCount: scrap
+        };
+        await manufacturingService.update(selectedBatch.id, qcBatch);
+      }
+      
       await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast(`Batch successfully advanced to Primary Finishing with ${validQty} good pieces!`, 'success');
       setShowAdvanceModal(false);

@@ -84,8 +84,18 @@ const PrimaryDashboard = () => {
       
       await manufacturingService.update(selectedBatch.id, updatedBatch);
       
-      const newStatus = formData.qualityCheckPassed ? 'FINISHED_GOOD' : 'REWORK';
-      await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
+      const newStatus = formData.qualityCheckPassed ? 'FINISHED_GOOD' : 'REWORK';      
+      // Update inspection status to PENDING if it's sent to QC
+      if (newStatus === 'QC_HOLD') {
+        const qcBatch = {
+          ...updatedBatch,
+          inspectionStatus: 'PENDING',
+          defectDescription: formData.remarks || 'Sent to QC from Primary Finishing',
+          defectCount: scrap
+        };
+        await manufacturingService.update(selectedBatch.id, qcBatch);
+      }
+            await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast(`Batch successfully finished and moved to Inventory with ${validQty} units!`, 'success');
       setShowAdvanceModal(false);
       fetchWipBatches();
