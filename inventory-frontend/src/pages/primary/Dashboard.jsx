@@ -254,7 +254,10 @@ const PrimaryDashboard = () => {
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Product Data</span>
                 <span className="text-sm font-bold text-slate-600 bg-slate-50 px-4 py-3 rounded-xl border border-slate-100 block">{viewHistoryBatch.manufacturingAttributes?.itemName || viewHistoryBatch.itemName || 'Material Item'}</span>
               </div>
-
+              <div className="flex flex-col mb-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1"><Clock size={12} /> Process Start Date & Time</span>
+                <span className="text-sm font-bold text-slate-700">{viewHistoryBatch.wipStartDate ? new Date(viewHistoryBatch.wipStartDate).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Not yet started'}</span>
+              </div>
               <div className="grid grid-cols-2 gap-4 mt-4 py-4 border-y border-slate-50">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passed Qty</span>
