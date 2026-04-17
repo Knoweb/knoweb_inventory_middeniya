@@ -20,15 +20,21 @@ const QCDashboard = () => {
   const fetchPendingInspections = async () => {
     try {
       setLoading(true);
-      const res = await manufacturingService.getPendingInspection();
-      const allItems = res.data || [];
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const orgId = user.orgId || 1;
+
+      // 1. Fetch pending directly from the pending endpoint
+      const pendingRes = await manufacturingService.getPendingInspection();
+      setInspections(Array.isArray(pendingRes.data) ? pendingRes.data : []);
+
+      // 2. Fetch history by getting all items and filtering completed
+      const allRes = await manufacturingService.getByOrganization(orgId);
+      const allItems = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.content || []);
       
-      // Separate pending (inspectionStatus = PENDING) vs completed (PASSED, FAILED)
-      const pending = allItems.filter(i => i.inspectionStatus === 'PENDING');
       const completed = allItems.filter(i => i.inspectionStatus === 'PASSED' || i.inspectionStatus === 'FAILED');
       
-      setInspections(pending);
-      setCompletedInspections(completed);
+      // Sort so newest inspections are at top
+      setCompletedInspections(completed.reverse());
     } catch (err) {
       console.error("QC API unavailable.", err);
       setInspections([]);
