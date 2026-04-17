@@ -124,6 +124,32 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
     }
   };
 
+  const handleSupplierSelect = (supplierId) => {
+    if (!supplierId) {
+      setForm(prev => ({ ...prev, supplierId: "" }));
+      return;
+    }
+
+    const supplier = suppliers.find(s => String(s.id) === String(supplierId));
+    const mappings = supplier?.contactInfo?.mappings || [];
+
+    setForm(prev => {
+      if (mappings.length > 0) {
+        const newItems = mappings.map(mapping => {
+          const product = availableProducts.find(p => String(p.id) === String(mapping.productId));
+          return {
+            productId: mapping.productId || '',
+            productName: product ? product.name : mapping.productName || '',
+            quantity: '',
+            unitPrice: mapping.defaultPrice !== undefined && mapping.defaultPrice !== null ? mapping.defaultPrice : ''
+          };
+        });
+        return { ...prev, supplierId, items: newItems };
+      }
+      return { ...prev, supplierId };
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto animate-in zoom-in-95 duration-200">
@@ -148,7 +174,7 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
               <select
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition-all"
                 value={form.supplierId}
-                onChange={e => setForm(p => ({ ...p, supplierId: e.target.value }))}
+                onChange={e => handleSupplierSelect(e.target.value)}
                 required
               >
                 <option value="">— Select supplier —</option>
