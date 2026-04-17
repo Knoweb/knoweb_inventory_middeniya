@@ -430,6 +430,7 @@ const [actionError, setActionError] = useState('');
         const data = suppliersRes.value.data;
         const sList = Array.isArray(data) ? data : (data?.content ?? data?.data ?? []);
         setSuppliers(sList.map((s) => ({
+          ...s,
           id: s.id,
           name: s.name || s.supplierName || s.companyName || `Supplier #${s.id}`,
         })));
