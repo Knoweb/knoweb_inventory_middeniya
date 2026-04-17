@@ -150,15 +150,29 @@ const QCDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {completedInspections.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || `PO-${item.id}`}</td>
+                {completedInspections.map((item) => {
+                  const isBypassed = item.inspectionStatus === 'AUTO_PASSED';
+                  const isQcUnchecked = item.defectDescription?.includes('Sent to Rework/QC') || false;
+
+                  return (
+                  <tr key={item.id} className={`hover:bg-slate-100/50 border-b border-gray-100 transition-colors ${isBypassed ? 'bg-blue-50/40' : ''} ${isQcUnchecked ? 'bg-amber-50/50' : ''}`}>
+                    <td className="px-6 py-4 font-medium text-gray-700">
+                      {item.workOrderNumber || `PO-${item.id}`}
+                      {isQcUnchecked && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-widest border border-amber-200">Flagged from Assemble</span>}
+                    </td>
                     <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium">{item.materialCode || item.itemName || 'Item'}</span></td>
-                    <td className="px-6 py-4"><span className={`text-xs font-bold uppercase px-3 py-1 rounded ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}</span></td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs font-bold uppercase px-3 py-1 rounded ${
+                        item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 
+                        item.inspectionStatus === 'FAILED' ? 'bg-red-100 text-red-700' : 
+                        item.inspectionStatus === 'AUTO_PASSED' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-800'
+                      }`}>{item.inspectionStatus === 'PASSED' ? 'Approved' : item.inspectionStatus === 'FAILED' ? 'Scrapped' : item.inspectionStatus === 'AUTO_PASSED' ? 'Auto-passed' : item.inspectionStatus}</span>
+                    </td>
                     <td className="px-6 py-4 font-semibold text-gray-700">{item.qualityGrade || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || 'N/A'}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )

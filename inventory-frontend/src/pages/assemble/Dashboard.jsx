@@ -87,29 +87,25 @@ const AssembleDashboard = () => {
       
       const newStatus = formData.qualityCheckPassed ? 'WIP_PRIMARY' : 'REWORK';
       
-      // If it's rework, flag it as pending inspection so it shows in QC
-      if (newStatus === 'REWORK') {
-        const qcBatch = {
-          ...updatedBatch,
-          inspectionStatus: 'PENDING',
-          defectDescription: formData.remarks || 'Sent to Rework/QC from Assembling',
-          defectCount: scrap > 0 ? scrap : processed
-        };
-        await manufacturingService.update(selectedBatch.id, qcBatch);
-      }
-      
-      await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
-      showToast(`Batch successfully advanced to Primary Finishing with ${validQty} good pieces!`, 'success');
-      setShowAdvanceModal(false);
-      fetchWipBatches();
-    } catch (error) {
-      console.error('Error advancing batch:', error);
-      showToast('Failed to advance batch to Primary Finishing.', 'error');
-      setShowAdvanceModal(false);
-    }
-  };
-
-  if (loading) return (
+        if (newStatus === 'REWORK') {
+          // Sent for QC
+          const qcBatch = {
+            ...updatedBatch,
+            inspectionStatus: 'PENDING',
+            defectDescription: formData.remarks || 'Sent to Rework/QC from Assembling',
+            defectCount: scrap > 0 ? scrap : processed
+          };
+          await manufacturingService.update(selectedBatch.id, qcBatch);
+        } else {
+          // Auto-passed, bypassing QC Pending
+          const qcAutoPassedBatch = {
+            ...updatedBatch,
+            inspectionStatus: 'AUTO_PASSED',
+            defectDescription: formData.remarks || 'Auto-passed QC at Assembling',
+            defectCount: scrap || 0,
+            qualityGrade: 'A'
+          };
+          await manufacturingService.update(selectedBatch.id, qcAutoPassedBatch);
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-400 space-y-4">
       <RefreshCw className="animate-spin text-emerald-500" size={40} />
       <span className="text-[10px] font-black uppercase tracking-[0.3em]">Loading Assembly Batches...</span>
