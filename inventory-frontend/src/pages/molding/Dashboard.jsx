@@ -136,7 +136,7 @@ const MoldingDashboard = () => {
           ...updatedBatch,
           inspectionStatus: 'PENDING',
           defectDescription: `[Molding] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
-          defectCount: formData.scrap > 0 ? formData.scrap : formData.processed
+          defectCount: scrap > 0 ? scrap : processed
         };
         await manufacturingService.update(selectedBatch.id, qcBatch);
       }
