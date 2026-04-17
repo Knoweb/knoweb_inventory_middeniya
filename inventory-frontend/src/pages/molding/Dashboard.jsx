@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info, Plus, History, PlayCircle, Clock, AlertTriangle } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -136,7 +136,11 @@ const MoldingDashboard = () => {
         const qcBatch = {
           ...updatedBatch,
           inspectionStatus: 'PENDING',
-            defectDescription: `[Molding] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
+          defectDescription: `[Molding] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
+          defectCount: formData.scrap > 0 ? formData.scrap : formData.processed
+        };
+        await manufacturingService.update(selectedBatch.id, qcBatch);
+      }
       
       await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast(`Batch successfully advanced to Assembly with ${validQty} good pieces!`, 'success');
@@ -489,3 +493,5 @@ const MoldingDashboard = () => {
 };
 
 export default MoldingDashboard;
+
+
