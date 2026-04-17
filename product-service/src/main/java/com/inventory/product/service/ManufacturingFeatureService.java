@@ -211,6 +211,13 @@ public class ManufacturingFeatureService {
     }
     
     /**
+     * Get completed inspection items
+     */
+    public List<ManufacturingProduct> getCompletedInspections() {
+        return manufacturingProductRepository.findCompletedInspections();
+    }
+    
+    /**
      * Update inspection result
      */
     public ManufacturingProduct updateInspection(Long id, String inspectionStatus, 

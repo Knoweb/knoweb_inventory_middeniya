@@ -197,6 +197,15 @@ public class ManufacturingController {
     public ResponseEntity<List<ManufacturingProduct>> getPendingInspection() {
         return ResponseEntity.ok(manufacturingFeatureService.getPendingInspection());
     }
+
+    /**
+     * Get completed inspection items
+     * GET /api/manufacturing/inspection/history
+     */
+    @GetMapping("/inspection/history")
+    public ResponseEntity<List<ManufacturingProduct>> getHistoryInspection() {
+        return ResponseEntity.ok(manufacturingFeatureService.getCompletedInspections());
+    }
     
     /**
      * Update inspection result
