@@ -87,6 +87,7 @@ const AssembleDashboard = () => {
         manufacturingAttributes: {
           ...(selectedBatch.manufacturingAttributes || {}),
           quantity: validQty,
+          assembleScrap: scrap,
           scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap // accumulate total scrap
         }
       };
@@ -295,8 +296,8 @@ const AssembleDashboard = () => {
                   <span className="text-xl font-black text-slate-700">{viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Accumulated Scrap</span>
-                  <span className="text-xl font-black text-rose-500">{viewHistoryBatch.manufacturingAttributes?.scrapRecorded || viewHistoryBatch.manufacturingAttributes?.scrapQuantity || viewHistoryBatch.defectCount || 0}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assemble Scrap</span>
+                  <span className="text-xl font-black text-rose-500">{viewHistoryBatch.manufacturingAttributes?.assembleScrap || 0}</span>
                 </div>
               </div>
 

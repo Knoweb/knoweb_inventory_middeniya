@@ -122,6 +122,7 @@ const MoldingDashboard = () => {
         manufacturingAttributes: {
           ...(selectedBatch.manufacturingAttributes || {}),
           quantity: validQty,
+          moldingScrap: scrap,
           scrapRecorded: scrap 
         }
       };
@@ -463,8 +464,8 @@ const MoldingDashboard = () => {
                   <span className="text-xl font-black text-slate-700">{viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Scrap</span>
-                  <span className="text-xl font-black text-rose-500">{viewHistoryBatch.manufacturingAttributes?.scrapRecorded || viewHistoryBatch.manufacturingAttributes?.scrapQuantity || viewHistoryBatch.defectCount || 0}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Molding Scrap</span>
+                  <span className="text-xl font-black text-rose-500">{viewHistoryBatch.manufacturingAttributes?.moldingScrap || 0}</span>
                 </div>
               </div>
 
