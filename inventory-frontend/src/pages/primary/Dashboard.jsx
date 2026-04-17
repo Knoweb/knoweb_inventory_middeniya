@@ -33,8 +33,6 @@ const PrimaryDashboard = () => {
 
       // Identify history items (items that passed through primary finishing)
       const passedBatches = (response.data || []).filter(b => {
-        if (!b.manufacturingAttributes || !b.manufacturingAttributes.batchNumber) return false;
-        
         // Exclude current Primary batches
         if (b.wipStatus === 'PRIMARY' || b.wipStatus === 'WIP_PRIMARY' || b.currentStage === 'PRIMARY' || b.status === 'WIP_PRIMARY') return false;
 

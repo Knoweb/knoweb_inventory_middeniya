@@ -33,8 +33,6 @@ const AssembleDashboard = () => {
 
       // Identify history items (items that passed through assemble, typically WIP_PRIMARY, FINISHED_GOOD)
       const passedBatches = (response.data || []).filter(b => {
-        if (!b.manufacturingAttributes || !b.manufacturingAttributes.batchNumber) return false;
-        
         // Items successfully passed to Primary or Finished Good
         const isPassed = (b.wipStatus === 'WIP_PRIMARY' || b.wipStatus === 'FINISHED_GOOD' || b.status === 'WIP_PRIMARY' || b.status === 'FINISHED_GOOD');
         if (isPassed) {

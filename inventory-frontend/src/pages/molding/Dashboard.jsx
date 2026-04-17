@@ -67,8 +67,6 @@ const MoldingDashboard = () => {
 
       // Identify history items (items that originated or passed through molding, typically WIP_ASSEMBLE, WIP_PRIMARY, FINISHED_GOOD)
       const passedBatches = (response.data || []).filter(b => {
-        if (!b.manufacturingAttributes || !b.manufacturingAttributes.batchNumber) return false;
-        
         // Exclude current molding batches
         const isCurrentMolding = b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING' || b.currentStage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING';
         if (isCurrentMolding) return false;
