@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw, ArrowRight, Play, CheckCircle2, Sparkles, Info, History, PlayCircle, Clock, AlertTriangle } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -229,23 +229,28 @@ const PrimaryDashboard = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {batches.map((batch, idx) => (
-              <div key={batch.id || idx} className="bg-white border border-slate-100 rounded-3xl p-6 shadow-xl shadow-slate-200/20 hover:border-amber-200 transition-all group flex flex-col">
-                <div className="flex justify-between items-start mb-4">
+              <div key={batch.id || idx} className="bg-white border border-slate-100 rounded-3xl p-6 shadow-xl shadow-slate-200/20 hover:border-amber-200 transition-all group flex flex-col relative overflow-hidden">
+                {batch.qualityGrade === 'B' && (
+                  <div className="absolute top-0 right-0 bg-amber-500 text-white text-[8px] font-black uppercase tracking-widest px-3 py-1 pb-1.5 rounded-bl-xl shadow-md z-10 flex items-center gap-1">
+                    <CheckCircle2 size={10} /> QC Repaired
+                  </div>
+                )}
+                <div className="flex justify-between items-start mb-4 relative z-0">
                   <div className="bg-amber-50 text-amber-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
                     {batch.status || 'WIP_PRIMARY'}
                   </div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty: {batch.manufacturingAttributes?.quantity || batch.quantity || 0}</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${batch.qualityGrade === 'B' ? 'text-amber-500 mt-4' : 'text-slate-400'}`}>Qty: {batch.manufacturingAttributes?.quantity || batch.quantity || 0}</span>
                 </div>
                 
                 {/* Fixed the escaping issue securely for the batch number display */}
-                <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || `BATCH-${batch.id}`}</h3>
-                <p className="text-sm font-semibold text-slate-500 mb-2">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}</p>
-                <p className="text-[9px] font-semibold text-slate-400 mb-6 flex items-center gap-1">
+                <h3 className="text-xl font-bold text-slate-800 mb-1 relative z-0">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || `BATCH-${batch.id}`}</h3>
+                <p className="text-sm font-semibold text-slate-500 mb-2 relative z-0">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}</p>
+                <p className="text-[9px] font-semibold text-slate-400 mb-6 flex items-center gap-1 relative z-0">
                   <Clock size={12} />
                   {batch.wipStartDate ? new Date(batch.wipStartDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                 </p>
                 
-                <div className="mt-auto">
+                <div className="mt-auto relative z-0">
                   <button 
                     onClick={() => handleOpenAdvance(batch)}
                     className="w-full py-4 bg-slate-900 text-white rounded-2xl shadow-lg shadow-slate-200 hover:bg-amber-500 text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 group-hover:scale-[1.02] active:scale-95"
@@ -408,3 +413,4 @@ const PrimaryDashboard = () => {
 };
 
 export default PrimaryDashboard;
+
