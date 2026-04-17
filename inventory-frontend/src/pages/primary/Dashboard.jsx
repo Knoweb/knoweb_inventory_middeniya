@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowRight, Play, CheckCircle2, Sparkles, Info, History, PlayCircle, Clock } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, CheckCircle2, Sparkles, Info, History, PlayCircle, Clock, AlertTriangle } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -32,14 +32,24 @@ const PrimaryDashboard = () => {
       setBatches(primaryBatches);
 
       // Identify history items (items that passed through primary finishing)
-      const passedBatches = (response.data || []).filter(b => 
-        (b.manufacturingAttributes && b.manufacturingAttributes.batchNumber) &&
-        b.wipStatus !== 'PRIMARY' && 
-        b.wipStatus !== 'WIP_PRIMARY' && 
-        b.currentStage !== 'PRIMARY' &&
-        b.status !== 'WIP_PRIMARY' &&
-        (b.wipStatus === 'FINISHED_GOOD' || b.status === 'FINISHED_GOOD' || b.wipStatus === 'QC_HOLD' || b.status === 'QC_HOLD')
-      );
+      const passedBatches = (response.data || []).filter(b => {
+        if (!b.manufacturingAttributes || !b.manufacturingAttributes.batchNumber) return false;
+        
+        // Exclude current Primary batches
+        if (b.wipStatus === 'PRIMARY' || b.wipStatus === 'WIP_PRIMARY' || b.currentStage === 'PRIMARY' || b.status === 'WIP_PRIMARY') return false;
+
+        // Normal passed items
+        if (b.wipStatus === 'FINISHED_GOOD' || b.status === 'FINISHED_GOOD') return true;
+
+        // Items submitted with QC Unchecked from Primary
+        if (b.wipStatus === 'QC_HOLD' || b.status === 'QC_HOLD') {
+            return b.defectDescription?.toLowerCase().includes('primary') || 
+                   b.defectDescription?.toLowerCase().includes('[primary]') ||
+                   b.defectDescription?.toLowerCase().includes('finishing');
+        }
+        
+        return false;
+      });
       setHistoryBatches(passedBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
@@ -86,13 +96,13 @@ const PrimaryDashboard = () => {
       await manufacturingService.update(selectedBatch.id, updatedBatch);
       
       const newStatus = formData.qualityCheckPassed ? 'FINISHED_GOOD' : 'QC_HOLD';      
-      // Update inspection status to PENDING if it's sent to QC
-      if (newStatus === 'QC_HOLD') {
-        const qcBatch = {
-          ...updatedBatch,
-          inspectionStatus: 'PENDING',
-          defectDescription: formData.remarks || 'Sent to QC from Primary Finishing',
-          defectCount: scrap > 0 ? scrap : processed
+        
+        // Update inspection status to PENDING if it's sent to QC
+        if (newStatus === 'QC_HOLD') {
+          const qcBatch = {
+            ...updatedBatch,
+            inspectionStatus: 'PENDING',
+            defectDescription: `[Primary Finishing] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
         };
         await manufacturingService.update(selectedBatch.id, qcBatch);
       }
@@ -177,19 +187,35 @@ const PrimaryDashboard = () => {
                 <div 
                   key={batch.id || idx} 
                   onClick={() => setViewHistoryBatch(batch)}
-                  className="bg-slate-50 cursor-pointer border border-slate-100 rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 hover:border-amber-200 group flex flex-col"
+                  className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${
+                    batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD'
+                      ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
+                      : 'bg-slate-50 border-slate-100 hover:border-amber-200'
+                  }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                      {batch.status || batch.wipStatus || 'Sent to Stores'}
-                    </div>
+                    {batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? (
+                      <div className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                        <AlertTriangle size={12} /> Sent to QC (Unchecked)
+                      </div>
+                    ) : (
+                      <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                        {batch.status || batch.wipStatus || 'Sent to Stores'}
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800 line-through decoration-slate-300 decoration-2 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}</h3>
-                  <p className="text-sm font-semibold text-slate-500 mb-4">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}</p>
+                  <h3 className={`text-xl font-bold line-through decoration-2 mb-1 ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-900 decoration-rose-300' : 'text-slate-800 decoration-slate-300'}`}>
+                    {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}
+                  </h3>
+                  <p className={`text-sm font-semibold mb-4 ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-600/80' : 'text-slate-500'}`}>
+                    {batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}
+                  </p>
                   
-                  <div className="mt-auto pt-4 border-t border-slate-200 flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">View Details</span>
-                    <ArrowRight size={14} className="text-amber-500" />
+                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'border-rose-100/50' : 'border-slate-200'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-600' : 'text-amber-600'}`}>
+                      View Details
+                    </span>
+                    <ArrowRight size={14} className={batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-500' : 'text-amber-500'} />
                   </div>
                 </div>
               ))}
@@ -271,14 +297,18 @@ const PrimaryDashboard = () => {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center mt-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-full">
-                    <CheckCircle2 size={16} />
+                  <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
                   </div>
                   <div>
-                    <span className="block text-[10px] font-black text-emerald-600/70 uppercase tracking-widest">Progress</span>
-                    <span className="block text-sm font-bold text-emerald-700 uppercase tracking-tight">Passed Primary / Inventory Ready</span>
+                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
+                      Progress
+                    </span>
+                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                      {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'Sent to QC (Unchecked)' : 'Passed Primary / Inventory Ready'}
+                    </span>
                   </div>
                 </div>
               </div>
