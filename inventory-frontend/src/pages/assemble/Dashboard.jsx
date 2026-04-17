@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowRight, Play, CheckCircle2, Wrench, Info, History, PlayCircle, Clock } from 'lucide-react';
+import { RefreshCw, ArrowRight, Play, CheckCircle2, Wrench, Info, History, PlayCircle, Clock, AlertTriangle } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -32,14 +32,24 @@ const AssembleDashboard = () => {
       setBatches(assembleBatches);
 
       // Identify history items (items that passed through assemble, typically WIP_PRIMARY, FINISHED_GOOD)
-      const passedBatches = (response.data || []).filter(b => 
-        (b.manufacturingAttributes && b.manufacturingAttributes.batchNumber) &&
-        b.wipStatus !== 'ASSEMBLE' && 
-        b.wipStatus !== 'WIP_ASSEMBLE' && 
-        b.currentStage !== 'ASSEMBLE' &&
-        b.status !== 'WIP_ASSEMBLE' &&
-        (b.wipStatus === 'WIP_PRIMARY' || b.wipStatus === 'FINISHED_GOOD' || b.status === 'WIP_PRIMARY' || b.status === 'FINISHED_GOOD')
-      );
+      const passedBatches = (response.data || []).filter(b => {
+        if (!b.manufacturingAttributes || !b.manufacturingAttributes.batchNumber) return false;
+        
+        // Items successfully passed to Primary or Finished Good
+        const isPassed = (b.wipStatus === 'WIP_PRIMARY' || b.wipStatus === 'FINISHED_GOOD' || b.status === 'WIP_PRIMARY' || b.status === 'FINISHED_GOOD');
+        if (isPassed) {
+          return b.wipStatus !== 'ASSEMBLE' && b.wipStatus !== 'WIP_ASSEMBLE' && b.currentStage !== 'ASSEMBLE' && b.status !== 'WIP_ASSEMBLE';
+        }
+        
+        // Items submitted with QC Unchecked (they become REWORK and go to QC)
+        const isQcUnchecked = b.wipStatus === 'REWORK' && (
+          b.defectDescription?.toLowerCase().includes('assembling') || 
+          b.defectDescription?.toLowerCase().includes('[assemble]') ||
+          b.defectDescription?.toLowerCase().includes('[assembling]')
+        );
+        
+        return isQcUnchecked;
+      });
       setHistoryBatches(passedBatches);
     } catch (error) {
       console.error('Error fetching WIP batches:', error);
@@ -87,25 +97,24 @@ const AssembleDashboard = () => {
       
       const newStatus = formData.qualityCheckPassed ? 'WIP_PRIMARY' : 'REWORK';
       
-        if (newStatus === 'REWORK') {
-          // Sent for QC
-          const qcBatch = {
-            ...updatedBatch,
-            inspectionStatus: 'PENDING',
-            defectDescription: formData.remarks || 'Sent to Rework/QC from Assembling',
-            defectCount: scrap > 0 ? scrap : processed
-          };
-          await manufacturingService.update(selectedBatch.id, qcBatch);
-        } else {
-          // Auto-passed, bypassing QC Pending
-          const qcAutoPassedBatch = {
-            ...updatedBatch,
-            inspectionStatus: 'AUTO_PASSED',
-            defectDescription: formData.remarks || 'Auto-passed QC at Assembling',
-            defectCount: scrap || 0,
-            qualityGrade: 'A'
-          };
-          await manufacturingService.update(selectedBatch.id, qcAutoPassedBatch);
+      // If it's rework, flag it as pending inspection so it shows in QC
+      if (newStatus === 'REWORK') {
+        const qcBatch = {
+          ...updatedBatch,
+          inspectionStatus: 'PENDING',
+            defectDescription: `[Assembling] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
+      await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
+      showToast(`Batch successfully advanced to Primary Finishing with ${validQty} good pieces!`, 'success');
+      setShowAdvanceModal(false);
+      fetchWipBatches();
+    } catch (error) {
+      console.error('Error advancing batch:', error);
+      showToast('Failed to advance batch to Primary Finishing.', 'error');
+      setShowAdvanceModal(false);
+    }
+  };
+
+  if (loading) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-400 space-y-4">
       <RefreshCw className="animate-spin text-emerald-500" size={40} />
       <span className="text-[10px] font-black uppercase tracking-[0.3em]">Loading Assembly Batches...</span>
@@ -174,19 +183,35 @@ const AssembleDashboard = () => {
                 <div 
                   key={batch.id || idx} 
                   onClick={() => setViewHistoryBatch(batch)}
-                  className="bg-slate-50 cursor-pointer border border-slate-100 rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 hover:border-emerald-200 group flex flex-col"
+                  className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${
+                    batch.wipStatus === 'REWORK' 
+                      ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
+                      : 'bg-slate-50 border-slate-100 hover:border-emerald-200'
+                  }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="bg-cyan-50 text-cyan-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                      {batch.status || batch.wipStatus || 'Moved to Primary'}
-                    </div>
+                    {batch.wipStatus === 'REWORK' ? (
+                      <div className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                        <AlertTriangle size={12} /> Sent to QC (Unchecked)
+                      </div>
+                    ) : (
+                      <div className="bg-cyan-50 text-cyan-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                        {batch.status || batch.wipStatus || 'Moved to Primary'}
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800 line-through decoration-slate-300 decoration-2 mb-1">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}</h3>
-                  <p className="text-sm font-semibold text-slate-500 mb-4">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Assembled Component'}</p>
+                  <h3 className={`text-xl font-bold line-through decoration-2 mb-1 ${batch.wipStatus === 'REWORK' ? 'text-rose-900 decoration-rose-300' : 'text-slate-800 decoration-slate-300'}`}>
+                    {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}
+                  </h3>
+                  <p className={`text-sm font-semibold mb-4 ${batch.wipStatus === 'REWORK' ? 'text-rose-600/80' : 'text-slate-500'}`}>
+                    {batch.manufacturingAttributes?.itemName || batch.itemName || 'Assembled Component'}
+                  </p>
                   
-                  <div className="mt-auto pt-4 border-t border-slate-200 flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">View Details</span>
-                    <ArrowRight size={14} className="text-emerald-500" />
+                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'REWORK' ? 'border-rose-100/50' : 'border-slate-200'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'REWORK' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      View Details
+                    </span>
+                    <ArrowRight size={14} className={batch.wipStatus === 'REWORK' ? 'text-rose-500' : 'text-emerald-500'} />
                   </div>
                 </div>
               ))}
@@ -272,14 +297,18 @@ const AssembleDashboard = () => {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center mt-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'REWORK' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-full">
-                    <CheckCircle2 size={16} />
+                  <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'REWORK' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {viewHistoryBatch.wipStatus === 'REWORK' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
                   </div>
                   <div>
-                    <span className="block text-[10px] font-black text-emerald-600/70 uppercase tracking-widest">Progress</span>
-                    <span className="block text-sm font-bold text-emerald-700 uppercase tracking-tight">Passed Assembly</span>
+                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.wipStatus === 'REWORK' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
+                      Progress
+                    </span>
+                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.wipStatus === 'REWORK' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                      {viewHistoryBatch.wipStatus === 'REWORK' ? 'Sent to QC (Unchecked)' : 'Passed Assembly'}
+                    </span>
                   </div>
                 </div>
               </div>

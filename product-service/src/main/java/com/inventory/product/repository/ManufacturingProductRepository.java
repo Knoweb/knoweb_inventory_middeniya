@@ -58,7 +58,7 @@ public interface ManufacturingProductRepository extends JpaRepository<Manufactur
     @Query("SELECT m FROM ManufacturingProduct m WHERE m.inspectionStatus = 'PENDING'")
     List<ManufacturingProduct> findPendingInspection();
 
-    @Query("SELECT m FROM ManufacturingProduct m WHERE m.inspectionStatus IN ('PASSED', 'FAILED', 'AUTO_PASSED') ORDER BY m.inspectionDate DESC")
+    @Query("SELECT m FROM ManufacturingProduct m WHERE m.inspectionStatus IN ('PASSED', 'FAILED') ORDER BY m.inspectionDate DESC")
     List<ManufacturingProduct> findCompletedInspections();
 
     @Query("SELECT m FROM ManufacturingProduct m WHERE m.reworkCount > :maxRework")
