@@ -97,7 +97,7 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
     if (!form.supplierId) { setError('Please select a supplier.'); return; }
     if (!form.warehouseId) { setError('Please select a destination warehouse.'); return; }
     if (!form.expectedDeliveryDate) { setError('Please select an expected delivery date.'); return; }
-    if (form.items.some(it => !it.itemCode || !it.quantity || !it.unitPrice)) {
+    if (form.items.some(it => !(it.productId || it.itemCode) || !it.quantity || !it.unitPrice)) {
       setError('Please fill in all item fields.'); return;
     }
     setSubmitting(true); setError('');
