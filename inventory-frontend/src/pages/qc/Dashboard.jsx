@@ -18,30 +18,32 @@ const QCDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchPendingInspections = async () => {
-    try {
-      setLoading(true);
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const orgId = user.orgId || 1;
+    setLoading(true);
 
-      // 1. Fetch pending directly from the pending endpoint
+    // 1. Fetch active pending inspections
+    try {
       const pendingRes = await manufacturingService.getPendingInspection();
       setInspections(Array.isArray(pendingRes.data) ? pendingRes.data : []);
+    } catch (err) {
+      console.error("Failed to fetch pending inspections:", err);
+      setInspections([]);
+    }
 
-      // 2. Fetch history by getting all items and filtering completed
+    // 2. Fetch history (passed/failed)
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const orgId = user.orgId || 1;
       const allRes = await manufacturingService.getByOrganization(orgId);
       const allItems = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.content || []);
       
       const completed = allItems.filter(i => i.inspectionStatus === 'PASSED' || i.inspectionStatus === 'FAILED');
-      
-      // Sort so newest inspections are at top
       setCompletedInspections(completed.reverse());
     } catch (err) {
-      console.error("QC API unavailable.", err);
-      setInspections([]);
+      console.error("Failed to fetch inspection history:", err);
       setCompletedInspections([]);
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -63,7 +65,7 @@ const QCDashboard = () => {
     
     try {
       setSubmitting(true);
-      await manufacturingService.updateInspection(selectedItem.id, {
+      const res = await manufacturingService.updateInspection(selectedItem.id, {
         status: actionType === "SCRAP" ? "FAILED" : "PASSED",
         grade: actionType === "SCRAP" ? "REJECT" : "B",
         defectCount: selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0,
@@ -72,6 +74,7 @@ const QCDashboard = () => {
         processedBy: user?.username || 'QC_ADMIN'
       });
       setInspections(prev => prev.filter(i => i.id !== selectedItem.id));
+      setCompletedInspections(prev => [res.data, ...prev]);
       setShowModal(false);
       setSubmitting(false);
     } catch (err) {
