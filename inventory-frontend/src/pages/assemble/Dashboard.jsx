@@ -103,6 +103,11 @@ const AssembleDashboard = () => {
           ...updatedBatch,
           inspectionStatus: 'PENDING',
             defectDescription: `[Assembling] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
+            defectCount: scrap > 0 ? scrap : processed
+          };
+          await manufacturingService.update(selectedBatch.id, qcBatch);
+        }
+        
       await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
       showToast(`Batch successfully advanced to Primary Finishing with ${validQty} good pieces!`, 'success');
       setShowAdvanceModal(false);
