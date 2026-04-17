@@ -240,6 +240,7 @@ export const manufacturingService = {
   getByMaterialCode: (materialCode) => apiClient.get(`/api/manufacturing/material/${materialCode}`),
   getByLotNumber: (lotNumber) => apiClient.get(`/api/manufacturing/lot/${lotNumber}`),
   getPendingInspection: () => apiClient.get('/api/manufacturing/inspection/pending'),
+  getHistoryInspection: () => apiClient.get('/api/manufacturing/inspection/history'),
   updateInspection: (id, inspectionData) => apiClient.post(`/api/manufacturing/${id}/inspection`, inspectionData),
   getReworkRequired: () => apiClient.get('/api/manufacturing/rework/required'),
   getExcessiveRework: (maxRework) => apiClient.get(`/api/manufacturing/rework/excessive?maxRework=${maxRework}`),

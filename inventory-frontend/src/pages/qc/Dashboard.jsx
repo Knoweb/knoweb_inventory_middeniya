@@ -31,13 +31,9 @@ const QCDashboard = () => {
 
     // 2. Fetch history (passed/failed)
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const orgId = user.orgId || 1;
-      const allRes = await manufacturingService.getByOrganization(orgId);
-      const allItems = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.content || []);
-      
-      const completed = allItems.filter(i => i.inspectionStatus === 'PASSED' || i.inspectionStatus === 'FAILED');
-      setCompletedInspections(completed.reverse());
+      const allRes = await manufacturingService.getHistoryInspection();
+      const completed = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.content || []);
+      setCompletedInspections(completed);
     } catch (err) {
       console.error("Failed to fetch inspection history:", err);
       setCompletedInspections([]);
