@@ -11,6 +11,7 @@ const AssembleDashboard = () => {
   const [historyBatches, setHistoryBatches] = useState([]);
   const [activeTab, setActiveTab] = useState('active');
   const [viewHistoryBatch, setViewHistoryBatch] = useState(null);
+  const [batchToDelete, setBatchToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   
@@ -23,17 +24,21 @@ const AssembleDashboard = () => {
     remarks: ''
   });
 
-    const handleDeleteBatch = async (e, id) => {
+      const handleDeleteBatch = (e, id) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this batch from history? This action cannot be undone.')) {
-      try {
-        await manufacturingService.delete(id);
-        showToast('Batch deleted successfully', 'success');
-        fetchWipBatches();
-      } catch (error) {
-        console.error('Error deleting history batch:', error);
-        showToast('Failed to delete history batch', 'error');
-      }
+    setBatchToDelete(id);
+  };
+
+  const confirmDeleteBatch = async () => {
+    if (!batchToDelete) return;
+    try {
+      await manufacturingService.delete(batchToDelete);
+      showToast('Batch deleted successfully', 'success');
+      setBatchToDelete(null);
+      fetchWipBatches();
+    } catch (error) {
+      console.error('Error deleting history batch:', error);
+      showToast('Failed to delete history batch', 'error');
     }
   };
 
@@ -428,9 +433,43 @@ const AssembleDashboard = () => {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      {batchToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Delete History Batch</h2>
+              <p className="text-slate-500 mt-3 font-medium">
+                Are you sure you want to delete this batch from history? This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex gap-4 w-full mt-8">
+              <button
+                onClick={() => setBatchToDelete(null)}
+                className="flex-1 px-4 py-3 rounded-2xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-colors uppercase tracking-wider text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteBatch}
+                className="flex-1 px-4 py-3 rounded-2xl font-black text-white bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/20 transition-colors flex items-center justify-center gap-2 uppercase tracking-wider text-sm"
+              >
+                <Trash2 size={18} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default AssembleDashboard;
+
+
 
