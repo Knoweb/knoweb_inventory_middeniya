@@ -85,7 +85,7 @@ const FinishedGoods = () => {
                   </div>
                   
                   <h3 className="text-xl font-bold text-slate-800 mb-1">
-                    {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `"BATCH-${batch.id}`"}
+                    {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}
                   </h3>
                   <p className="text-sm font-extrabold text-indigo-500 mb-6 uppercase tracking-wider">
                     {batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}
