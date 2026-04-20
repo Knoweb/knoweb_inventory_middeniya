@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowRight, Play, CheckCircle2, Wrench, Info, History, PlayCircle, Clock, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, ArrowRight, Play, CheckCircle2, Wrench, Info, History, PlayCircle, Clock, AlertTriangle, Trash2 } from 'lucide-react';
 import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -22,6 +22,20 @@ const AssembleDashboard = () => {
     qualityCheckPassed: true,
     remarks: ''
   });
+
+    const handleDeleteBatch = async (e, id) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this batch from history? This action cannot be undone.')) {
+      try {
+        await manufacturingService.delete(id);
+        showToast('Batch deleted successfully', 'success');
+        fetchWipBatches();
+      } catch (error) {
+        console.error('Error deleting history batch:', error);
+        showToast('Failed to delete history batch', 'error');
+      }
+    }
+  };
 
   const fetchWipBatches = async () => {
     try {
@@ -203,6 +217,13 @@ const AssembleDashboard = () => {
                         {batch.status || batch.wipStatus || 'Moved to Primary'}
                       </div>
                     )}
+                    <button 
+                      onClick={(e) => handleDeleteBatch(e, batch.id)}
+                      className="p-1.5 hover:bg-red-100/80 rounded-full text-slate-400 hover:text-red-500 transition-colors z-10"
+                      title="Delete Batch from History"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                   <h3 className={`text-xl font-bold line-through decoration-2 mb-1 ${batch.wipStatus === 'REWORK' ? 'text-rose-900 decoration-rose-300' : 'text-slate-800 decoration-slate-300'}`}>
                     {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}
@@ -412,3 +433,4 @@ const AssembleDashboard = () => {
 };
 
 export default AssembleDashboard;
+
