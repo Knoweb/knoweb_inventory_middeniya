@@ -29,6 +29,7 @@ import Sidebar from './components/Sidebar';
 import StoresDashboard from './pages/stores/Dashboard';
 import PoManager from './pages/stores/PoManager';
 import ReceiveStock from './pages/stores/ReceiveStock';
+import FinishedGoods from './pages/stores/FinishedGoods';
 import MoldingDashboard from './pages/molding/Dashboard';
 import AssembleDashboard from './pages/assemble/Dashboard';
 import PrimaryDashboard from './pages/primary/Dashboard';
@@ -76,7 +77,9 @@ function AppContent() {
                   <Route element={<RoleGuard allowedRoles={['ROLE_INV_STOCK_KEEPER', 'ROLE_STOCK_KEEPER', 'ROLE_PROCUREMENT']} />}>
                     <Route path="/stores" element={<StoresDashboard />} />
                     <Route path="/stores/purchase-orders" element={<PoManager />} />
-                      <Route path="/stores/receiving" element={<ReceiveStock />} />                    </Route>
+                      <Route path="/stores/receiving" element={<ReceiveStock />} />
+                      <Route path="/stores/finished-goods" element={<FinishedGoods />} />
+                    </Route>
 
                     {/* Molding Guard */}
                     <Route element={<RoleGuard allowedRoles={['ROLE_INV_MOLDING', 'ROLE_MOLDING', 'ROLE_INJECTION_MOLDING']} />}>                    <Route path="/molding" element={<MoldingDashboard />} />

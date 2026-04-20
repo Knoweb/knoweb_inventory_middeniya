@@ -15,9 +15,7 @@ import {
     ShoppingBag,
     Database,
     MonitorPlay,
-    Activity,
-    Layers
-} from 'lucide-react';
+    Activity, Package, Layers} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
@@ -140,6 +138,10 @@ const Sidebar = () => {
                         <NavLink to="/stores" end className={navLinkClass}>
                             <LayoutDashboard className={iconClass} />
                             <span>Dashboard</span>
+                        </NavLink>
+                        <NavLink to="/stores/finished-goods" className={navLinkClass}>
+                            <Package className={iconClass} />
+                            <span>Finished Goods</span>
                         </NavLink>
                         <NavLink to="/stores/receiving" className={navLinkClass}>
                             <Warehouse className={iconClass} />
