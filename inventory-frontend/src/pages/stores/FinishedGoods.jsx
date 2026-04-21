@@ -1,27 +1,39 @@
 import React, { useState, useEffect } from "react";
-import { Package, Layers, Box, CheckCircle2, RefreshCw } from "lucide-react";
+import { Package, Layers, Box, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
 import { manufacturingService } from "../../services/api";
 
 const FinishedGoods = () => {
   const [loading, setLoading] = useState(true);
   const [finishedBatches, setFinishedBatches] = useState([]);
+  const [batchToDelete, setBatchToDelete] = useState(null);
+
+  const fetchFinishedGoods = async () => {
+    setLoading(true);
+    try {
+      const wipRes = await manufacturingService.getWip();
+      const wipData = Array.isArray(wipRes.data) ? wipRes.data : (wipRes.data?.content ?? wipRes.data?.data ?? []);
+      const finished = wipData.filter(b => b.wipStatus === 'FINISHED_GOOD' || b.status === 'FINISHED_GOOD');
+      setFinishedBatches(finished.reverse());
+    } catch (error) {
+      console.error('Error fetching finished goods:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBatch = async () => {
+    if (!batchToDelete) return;
+    try {
+      await manufacturingService.delete(batchToDelete.id);
+      fetchFinishedGoods(); // Refresh list after deletion
+    } catch (error) {
+      console.error('Error deleting batch:', error);
+    } finally {
+      setBatchToDelete(null);
+    }
+  };
 
   useEffect(() => {
-    const fetchFinishedGoods = async () => {
-      setLoading(true);
-      try {
-        const wipRes = await manufacturingService.getWip();
-        const wipData = Array.isArray(wipRes.data) ? wipRes.data : (wipRes.data?.content ?? wipRes.data?.data ?? []);
-        const finished = wipData.filter(b => b.wipStatus === 'FINISHED_GOOD' || b.status === 'FINISHED_GOOD');
-        // Let's reverse to show most recent first
-        setFinishedBatches(finished.reverse());
-      } catch (error) {
-        console.error('Error fetching finished goods:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchFinishedGoods();
   }, []);
 
@@ -78,13 +90,18 @@ const FinishedGoods = () => {
                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
                       {batch.status || batch.wipStatus || 'FINISHED_GOOD'}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-right">
-                      <div>ID: {batch.id}</div>
-                      <div>{new Date(batch.updatedAt || batch.createdAt).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-xl font-bold text-slate-800 mb-1">
+                      <div className="flex items-start gap-4">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-right">
+                          <div>ID: {batch.id}</div>
+                          <div>{new Date(batch.updatedAt || batch.createdAt).toLocaleDateString()}</div>
+                        </div>
+                        <button
+                          onClick={() => setBatchToDelete(batch)}
+                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+                          title="Delete Batch"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                     {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}
                   </h3>
                   <p className="text-sm font-extrabold text-indigo-500 mb-6 uppercase tracking-wider">
@@ -184,8 +201,42 @@ const FinishedGoods = () => {
           )}
         </div>
       )}
-    </div>
-  );
+
+        {batchToDelete && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in duration-200">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-20 h-20 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-6">
+                  <Trash2 size={40} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Delete Finished Good</h2>
+                <p className="text-slate-500 mt-3 font-medium">
+                  Are you sure you want to permanently delete{" "}
+                  <span className="font-bold text-slate-700">
+                    {batchToDelete.manufacturingAttributes?.batchNumber || batchToDelete.batchNumber || batchToDelete.workOrderNumber || `BATCH-${batchToDelete.id}`}
+                  </span>
+                  ? This action cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex gap-4 w-full mt-8">
+                <button
+                  onClick={() => setBatchToDelete(null)}
+                  className="flex-1 px-4 py-3 rounded-2xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-colors uppercase tracking-wider text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteBatch}
+                  className="flex-1 px-4 py-3 rounded-2xl font-black text-white bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-200 hover:shadow-rose-300 transition-all active:scale-95 uppercase tracking-wider text-sm flex justify-center items-center gap-2"
+                >
+                  <Trash2 size={18} /> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 };
 
 export default FinishedGoods;
