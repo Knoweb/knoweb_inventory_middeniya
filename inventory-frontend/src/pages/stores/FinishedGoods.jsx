@@ -101,7 +101,11 @@ const FinishedGoods = () => {
                       <div className="space-y-1">
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-slate-500 uppercase">Process Qty</span>
-                          <span className="text-sm font-black text-slate-700">{batch.quantity || batch.manufacturingAttributes?.quantity || 0}</span>
+                          <span className="text-sm font-black text-slate-700">
+                            {parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0) + 
+                             parseInt(batch.manufacturingAttributes?.assembleScrap || 0) + 
+                             parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
+                          </span>
                         </div>
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
@@ -119,7 +123,10 @@ const FinishedGoods = () => {
                       <div className="space-y-1">
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-slate-500 uppercase">Process Qty</span>
-                          <span className="text-sm font-black text-slate-700">{batch.quantity || batch.manufacturingAttributes?.quantity || 0}</span>
+                          <span className="text-sm font-black text-slate-700">
+                            {parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0) + 
+                             parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
+                          </span>
                         </div>
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
