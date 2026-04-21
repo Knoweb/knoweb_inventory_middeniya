@@ -149,11 +149,36 @@ const FinishedGoods = () => {
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
                           <span className="text-sm font-black text-rose-600">{batch.manufacturingAttributes?.primaryScrap || 0}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
+                    {/* Summary Footer */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 rounded-2xl p-4">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                          Started Qty
+                        </span>
+                        <span className="text-base font-black text-slate-700">
+                          {parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0) + 
+                           parseInt(batch.manufacturingAttributes?.moldingScrap || 0) + 
+                           parseInt(batch.manufacturingAttributes?.assembleScrap || 0) + 
+                           parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
+                        </span>
+                      </div>
+                      <div className="w-px h-8 bg-slate-200"></div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] font-black text-rose-400/80 uppercase tracking-widest mb-1">
+                          Total Scrap
+                        </span>
+                        <span className="text-base font-black text-rose-600">
+                          {parseInt(batch.manufacturingAttributes?.moldingScrap || 0) + 
+                           parseInt(batch.manufacturingAttributes?.assembleScrap || 0) + 
+                           parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
               ))}
             </div>
           )}
