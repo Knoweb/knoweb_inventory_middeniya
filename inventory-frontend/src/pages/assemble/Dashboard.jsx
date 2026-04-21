@@ -319,7 +319,10 @@ const AssembleDashboard = () => {
               <div className="grid grid-cols-2 gap-4 mt-4 py-4 border-y border-slate-50">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passed Qty</span>
-                  <span className="text-xl font-black text-slate-700">{viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0}</span>
+                    <span className="text-xl font-black text-slate-700">
+                      {parseInt(viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0) + 
+                       parseInt(viewHistoryBatch.manufacturingAttributes?.primaryScrap || 0)}
+                    </span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assemble Scrap</span>
