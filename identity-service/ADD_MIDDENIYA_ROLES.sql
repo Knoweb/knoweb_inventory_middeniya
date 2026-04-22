@@ -1,5 +1,6 @@
 ﻿-- =====================================================
--- STEP 1: Add Middeniya Manufacturing Roles to oles table
+-- STEP 1: Add Middeniya Manufacturing Roles to 
+oles table
 -- =====================================================
 
 INSERT INTO roles (name, description) 

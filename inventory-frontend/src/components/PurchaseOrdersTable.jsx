@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Eye, CheckCircle2, Package, XCircle, Building2, Undo2 } from 'lucide-react';
+import { Search, Eye, CheckCircle2, Package, XCircle, Building2, Undo2, RefreshCw } from 'lucide-react';
 
 const STATUS_META = {
     PENDING: { label: 'Pending', icon: '🕐', cls: 'bg-amber-50 text-amber-700 border-amber-100' },
@@ -40,6 +40,7 @@ function PurchaseOrdersTable({
     onCancel,
     onReturn,
     loading = false,
+    processingOrderId = null,
 }) {
     const [search, setSearch] = useState('');
 
@@ -207,10 +208,16 @@ function PurchaseOrdersTable({
 
                                                     {isApproved && (
                                                         <button
-                                                            className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all font-black text-[10px] flex items-center gap-1.5"
+                                                            className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all font-black text-[10px] flex items-center gap-1.5 disabled:opacity-50"
                                                             onClick={() => onReceive?.(order.id)}
+                                                            disabled={processingOrderId === order.id}
                                                         >
-                                                            <Package size={14} /> RECEIVE
+                                                          {processingOrderId === order.id ? (
+                                                              <RefreshCw size={14} className="animate-spin" />
+                                                          ) : (
+                                                              <Package size={14} />
+                                                          )}
+                                                          {processingOrderId === order.id ? 'RECEIVING...' : 'RECEIVE'}
                                                         </button>
                                                     )}
                                                     

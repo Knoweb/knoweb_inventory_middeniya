@@ -595,6 +595,7 @@ function Orders() {
   const [showCreateSO, setShowCreateSO] = useState(false);
   const [showReturnPO, setShowReturnPO] = useState(null); // stores the order to return
   const [viewOrder, setViewOrder] = useState(null);
+  const [processingOrderId, setProcessingOrderId] = useState(null);
 
   const getProductName = (productId) => {
     const p = products.find(p => String(p.id) === String(productId));
@@ -683,11 +684,14 @@ function Orders() {
       cancelLabel: 'Cancel'
     });
     if (!isConfirmed) return;
+    setProcessingOrderId(orderId);
     try {
+      setActionSuccess("Please wait, still updating inventory...");
       await apiClient.patch(`/api/orders/purchase/${orderId}/receive`);
       showSuccess(`Order marked as received.`);
       fetchOrders();
     } catch (e) { setActionError(e.response?.data?.error || 'Failed to mark order as received.'); }
+    finally { setProcessingOrderId(null); }
   };
 
   const handleReturnAction = (orderId, reason) => {
@@ -739,13 +743,15 @@ function Orders() {
       cancelLabel: 'Cancel'
     });
     if (!isConfirmed) return;
+    setProcessingOrderId(orderId);
     try {
+      setActionSuccess("Please wait, still updating inventory...");
       await orderService.completeSalesOrder(orderId);
       showSuccess(`Sales Order fulfilled — stock updated ✅`);
       fetchOrders();
     } catch (e) {
       setActionError(e.response?.data?.error || 'Failed to complete order. Check stock availability.');
-    }
+    } finally { setProcessingOrderId(null); }
   };
 
   return (
@@ -915,6 +921,7 @@ function Orders() {
                 onReceive={handleReceive}
                 onCancel={handleCancel}
                 onReturn={handleReturnAction}
+                processingOrderId={processingOrderId}
               />
             </div>
           ) : (
@@ -954,8 +961,17 @@ function Orders() {
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
                               {order.status !== 'COMPLETED' && (
-                                <button onClick={() => handleComplete(order.id)} className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-50 transition-all flex items-center gap-2">
-                                  <CheckCircle2 size={12} /> Mark Fulfilled
+                                <button
+                                  onClick={() => handleComplete(order.id)}
+                                  disabled={processingOrderId === order.id}
+                                  className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-50 transition-all flex items-center gap-2 disabled:opacity-50"
+                                >
+                                  {processingOrderId === order.id ? (
+                                    <RefreshCw size={12} className="animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 size={12} />
+                                  )}
+                                  {processingOrderId === order.id ? 'Processing...' : 'Mark Fulfilled'}
                                 </button>
                               )}
                               <button className="p-2 bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>
