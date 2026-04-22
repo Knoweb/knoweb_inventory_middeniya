@@ -963,15 +963,15 @@ function Orders() {
                               {order.status !== 'COMPLETED' && (
                                 <button
                                   onClick={() => handleComplete(order.id)}
-                                  disabled={processingOrderId === order.id}
+                                  disabled={processingOrderId == order.id}
                                   className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-50 transition-all flex items-center gap-2 disabled:opacity-50"
                                 >
-                                  {processingOrderId === order.id ? (
+                                  {processingOrderId == order.id ? (
                                     <RefreshCw size={12} className="animate-spin" />
                                   ) : (
                                     <CheckCircle2 size={12} />
                                   )}
-                                  {processingOrderId === order.id ? 'Processing...' : 'Mark Fulfilled'}
+                                  {processingOrderId == order.id ? 'Processing...' : 'Mark Fulfilled'}
                                 </button>
                               )}
                               <button className="p-2 bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>

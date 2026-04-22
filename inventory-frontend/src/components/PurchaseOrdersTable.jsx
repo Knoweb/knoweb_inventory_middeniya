@@ -210,14 +210,14 @@ function PurchaseOrdersTable({
                                                         <button
                                                             className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all font-black text-[10px] flex items-center gap-1.5 disabled:opacity-50"
                                                             onClick={() => onReceive?.(order.id)}
-                                                            disabled={processingOrderId === order.id}
+                                                            disabled={processingOrderId == order.id}
                                                         >
-                                                          {processingOrderId === order.id ? (
+                                                          {processingOrderId == order.id ? (
                                                               <RefreshCw size={14} className="animate-spin" />
                                                           ) : (
                                                               <Package size={14} />
                                                           )}
-                                                          {processingOrderId === order.id ? 'RECEIVING...' : 'RECEIVE'}
+                                                          {processingOrderId == order.id ? 'RECEIVING...' : 'RECEIVE'}
                                                         </button>
                                                     )}
                                                     
