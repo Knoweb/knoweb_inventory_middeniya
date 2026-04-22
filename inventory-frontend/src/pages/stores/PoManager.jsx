@@ -397,6 +397,7 @@ const [actionError, setActionError] = useState('');
   
   const [showReturnPO, setShowReturnPO] = useState(null); // stores the order to return
   const [viewOrder, setViewOrder] = useState(null);
+  const [processingOrderId, setProcessingOrderId] = useState(null);
 
   const getProductName = (productId) => {
     const p = products.find(p => String(p.id) === String(productId));
@@ -482,11 +483,14 @@ const [actionError, setActionError] = useState('');
       cancelLabel: 'Cancel'
     });
     if (!isConfirmed) return;
+    setProcessingOrderId(orderId);
     try {
+      setActionSuccess("Please wait, still updating inventory...");
       await apiClient.patch(`/api/orders/purchase/${orderId}/receive`);
       showSuccess(`Order marked as received.`);
       fetchOrders();
     } catch (e) { setActionError(e.response?.data?.error || 'Failed to mark order as received.'); }
+    finally { setProcessingOrderId(null); }
   };
 
   const handleReturnAction = (orderId, reason) => {
@@ -538,13 +542,15 @@ const [actionError, setActionError] = useState('');
       cancelLabel: 'Cancel'
     });
     if (!isConfirmed) return;
+    setProcessingOrderId(orderId);
     try {
+      setActionSuccess("Please wait, still updating inventory...");
       await orderService.completeSalesOrder(orderId);
       showSuccess(`Sales Order fulfilled — stock updated ✅`);
       fetchOrders();
     } catch (e) {
       setActionError(e.response?.data?.error || 'Failed to complete order. Check stock availability.');
-    }
+    } finally { setProcessingOrderId(null); }
   };
 
   return (
@@ -661,7 +667,7 @@ const [actionError, setActionError] = useState('');
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="px-6 py-6 border-b border-slate-50 bg-slate-50/20 flex flex-wrap items-center justify-between gap-6"><h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><ShoppingCart size={24} className="text-indigo-600" />Purchase Orders<span className="ml-2 text-xs px-2.5 py-1 rounded-full font-black bg-indigo-100 text-indigo-700">{purchaseOrders.length}</span></h1><div><button id="create-purchase-order-btn" onClick={() => setShowCreatePO(true)} className="px-8 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-[0_8px_30px_rgb(99,102,241,0.2)]"><Plus size={18} /> New PO manifest</button></div></div><div className="p-6 min-h-[400px]">{loading ? (<div className="flex flex-col items-center justify-center h-[300px] text-slate-300"><RefreshCw size={40} className="animate-spin mb-4" /><span className="text-[10px] font-black uppercase tracking-[0.3em]">Synching Ledger...</span></div>) : (<div className="animate-in fade-in slide-in-from-bottom-2 duration-400"><PurchaseOrdersTable orders={purchaseOrders} suppliers={suppliers} products={products} warehouses={warehouses} onView={handleView} onApprove={handleApprove} onReceive={handleReceive} onCancel={handleCancel} onReturn={handleReturnAction} /></div>)}</div>
+        <div className="px-6 py-6 border-b border-slate-50 bg-slate-50/20 flex flex-wrap items-center justify-between gap-6"><h1 className="text-xl font-bold text-slate-800 flex items-center gap-2"><ShoppingCart size={24} className="text-indigo-600" />Purchase Orders<span className="ml-2 text-xs px-2.5 py-1 rounded-full font-black bg-indigo-100 text-indigo-700">{purchaseOrders.length}</span></h1><div><button id="create-purchase-order-btn" onClick={() => setShowCreatePO(true)} className="px-8 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-[0_8px_30px_rgb(99,102,241,0.2)]"><Plus size={18} /> New PO manifest</button></div></div><div className="p-6 min-h-[400px]">{loading ? (<div className="flex flex-col items-center justify-center h-[300px] text-slate-300"><RefreshCw size={40} className="animate-spin mb-4" /><span className="text-[10px] font-black uppercase tracking-[0.3em]">Synching Ledger...</span></div>) : (<div className="animate-in fade-in slide-in-from-bottom-2 duration-400"><PurchaseOrdersTable orders={purchaseOrders} suppliers={suppliers} products={products} warehouses={warehouses} onView={handleView} onApprove={handleApprove} onReceive={handleReceive} onCancel={handleCancel} onReturn={handleReturnAction} processingOrderId={processingOrderId} /></div>)}</div>
       </div>
     </div>
   );
