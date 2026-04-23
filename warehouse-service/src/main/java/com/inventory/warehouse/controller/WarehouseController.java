@@ -84,8 +84,8 @@ public class WarehouseController {
     // ── DELETE /api/warehouses/{id} ────────────────────────────────────────────
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteWarehouse(@PathVariable Long id) {
-        boolean deactivated = warehouseService.deactivateWarehouse(id);
-        return deactivated
+        boolean deleted = warehouseService.deleteWarehouse(id);
+        return deleted
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.notFound().build();
     }

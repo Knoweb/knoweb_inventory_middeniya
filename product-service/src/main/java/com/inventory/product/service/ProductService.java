@@ -4,6 +4,7 @@ import com.inventory.product.model.Product;
 import com.inventory.product.repository.CategoryRepository;
 import com.inventory.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class ProductService {
 
     private final ProductRepository productRepository;
@@ -128,8 +130,8 @@ public class ProductService {
         String category = product.getCategory();
         Long orgId = product.getOrgId();
 
-        product.setIsActive(false);
-        productRepository.save(product);
+        productRepository.delete(product);
+        log.info("Product {} purged from database", id);
 
         decrementCategoryCount(category, orgId);
     }
