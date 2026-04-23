@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { identityUserService, authService } from '../services/api';
 import { FaUser, FaEdit, FaTrash, FaPlus, FaSearch, FaBuilding, FaBriefcase } from 'react-icons/fa';
 import { useNotification } from '../context/NotificationContext';
+import { Trash2, RefreshCw, CheckCircle2, X, AlertCircle, UserMinus } from 'lucide-react';
 
 const Users = () => {
   const { showToast, confirm } = useNotification();
@@ -21,6 +22,12 @@ const Users = () => {
     branchId: '',
     active: true,
   });
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -51,19 +58,23 @@ const Users = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       if (editingUser) {
         await identityUserService.update(editingUser.id, formData);
-        showToast('User profile synchronization complete', 'success');
+        setSuccessMessage('Identity Profile Successfully Synchronized');
       } else {
         await authService.register(formData);
-        showToast('New user identity successfully established', 'success');
+        setSuccessMessage('New Identity Established in Central Grid');
       }
       setShowModal(false);
       resetForm();
+      setShowSuccessModal(true);
       fetchUsers();
     } catch (error) {
       console.error('Error saving user:', error);
       showToast(error.response?.data?.message || 'Biometric/Identity validation failed', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -83,24 +94,27 @@ const Users = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    const isConfirmed = await confirm({
-      title: 'Purge User Identity',
-      message: 'This operation will permanently revoke all access for this identity. Confirm protocol execution?',
-      type: 'danger',
-      confirmLabel: 'Purge Identity',
-      cancelLabel: 'Retain User'
-    });
+  const confirmDelete = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
 
-    if (isConfirmed) {
-      try {
-        await identityUserService.delete(id);
-        showToast('User identity purged from live grid', 'warning');
-        fetchUsers();
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        showToast('Identity revocation protocol failed', 'error');
-      }
+  const handleDelete = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      setIsSubmitting(true);
+      await identityUserService.delete(userToDelete.id);
+      setSuccessMessage('Identity Purged from Active Grid');
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      setShowSuccessModal(true);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showToast('Identity revocation protocol failed', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -249,7 +263,7 @@ const Users = () => {
                         </button>
                         <button
                           className="btn-icon"
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => confirmDelete(user)}
                           title="Delete"
                           style={{ color: '#ef4444' }}
                         >
@@ -374,6 +388,75 @@ const Users = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal (Matching design) */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowSuccessModal(false)}>
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="pt-10 pb-8 flex flex-col items-center">
+              <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center mb-8">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+              </div>
+              
+              <h3 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Protocol Success</h3>
+              <p className="text-center px-10 text-slate-500 font-bold leading-relaxed mb-10">
+                {successMessage}
+              </p>
+              
+              <div className="w-full px-12">
+                <button 
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-black transition-all active:scale-95 shadow-xl shadow-slate-200"
+                >
+                  Confirm & Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal (matching design) */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="pt-10 pb-4 flex flex-col items-center">
+              <div className="w-24 h-24 rounded-full bg-rose-50 flex items-center justify-center mb-8">
+                <UserMinus className="w-10 h-10 text-rose-500" />
+              </div>
+              
+              <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Purge Identity</h3>
+              <p className="text-center px-10 text-slate-500 font-bold leading-relaxed mb-10">
+                Are you sure you want to permanently revoke all access for <strong>{userToDelete?.username}</strong>? This action cannot be undone.
+              </p>
+              
+              <div className="w-full px-8 flex gap-4 mb-8">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isSubmitting}
+                  className="flex-1 py-4 bg-slate-50 text-slate-600 font-black uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isSubmitting}
+                  className="flex-1 py-4 bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-100 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:grayscale"
+                >
+                  {isSubmitting ? (
+                    <RefreshCw className="animate-spin" size={18} />
+                  ) : (
+                    <>
+                      <Trash2 size={18} />
+                      Purge
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
