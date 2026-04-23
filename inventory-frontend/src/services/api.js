@@ -246,7 +246,7 @@ export const manufacturingService = {
   getExcessiveRework: (maxRework) => apiClient.get(`/api/manufacturing/rework/excessive?maxRework=${maxRework}`),
   getByOrganization: (orgId) => apiClient.get(`/api/manufacturing/organization/${orgId}`),
   delete: (id) => apiClient.delete(`/api/manufacturing/${id}`),
-  deleteInspection: (id) => apiClient.delete(`/api/manufacturing/inspection/${id}`),
+  deleteInspection: (id) => apiClient.delete(`/api/manufacturing/${id}`),
 };
 
 export const industryConfigService = {

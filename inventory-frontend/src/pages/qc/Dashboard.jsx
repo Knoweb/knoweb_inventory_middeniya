@@ -16,6 +16,8 @@ const QCDashboard = () => {
   const [actionType, setActionType] = useState(''); // 'SCRAP' or 'REPAIR'
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const fetchPendingInspections = async () => {
     setLoading(true);
@@ -80,21 +82,25 @@ const QCDashboard = () => {
     }
   };
   
-  const handleDeleteHistory = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this inspection history record? This action cannot be undone.")) {
-      return;
-    }
+  const confirmDelete = (item) => {
+    setItemToDelete(item);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteHistory = async () => {
+    if (!itemToDelete) return;
     
     try {
-      setLoading(true);
-      await manufacturingService.deleteInspection(id);
-      setCompletedInspections(prev => prev.filter(item => item.id !== id));
-      alert("Inspection history deleted successfully.");
+      setSubmitting(true);
+      await manufacturingService.deleteInspection(itemToDelete.id);
+      setCompletedInspections(prev => prev.filter(item => item.id !== itemToDelete.id));
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     } catch (err) {
       console.error("Failed to delete inspection history:", err);
-      alert(err.userMessage || "Failed to delete inspection history record.");
+      alert(err.userMessage || "Protocol access denied. Failed to delete record.");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -178,7 +184,7 @@ const QCDashboard = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || 'N/A'}</td>
                     <td className="px-6 py-4 text-right">
                       <button 
-                        onClick={() => handleDeleteHistory(item.id)}
+                        onClick={() => confirmDelete(item)}
                         className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                         title="Delete from history"
                       >
@@ -306,6 +312,48 @@ const QCDashboard = () => {
                     actionType === "SCRAP" ? "Confirm Scrap Action" : "Approve Restock Action"
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Confirmation Modal (matching design) */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="pt-10 pb-4 flex flex-col items-center">
+              <div className="w-24 h-24 rounded-full bg-rose-50 flex items-center justify-center mb-8">
+                <Trash2 className="w-10 h-10 text-rose-500" />
+              </div>
+              
+              <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Delete History Batch</h3>
+              <p className="text-center px-10 text-slate-500 font-bold leading-relaxed mb-10">
+                Are you sure you want to delete this batch from history? This action cannot be undone.
+              </p>
+              
+              <div className="w-full px-8 flex gap-4 mb-8">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={submitting}
+                  className="flex-1 py-4 bg-slate-50 text-slate-600 font-black uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteHistory}
+                  disabled={submitting}
+                  className="flex-1 py-4 bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-100 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:grayscale"
+                >
+                  {submitting ? (
+                    <RefreshCw className="animate-spin" size={18} />
+                  ) : (
+                    <>
+                      <Trash2 size={18} />
+                      Delete
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
