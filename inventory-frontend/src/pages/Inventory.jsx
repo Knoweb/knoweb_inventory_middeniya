@@ -105,7 +105,7 @@ function Inventory() {
       fetchData();
     } catch (err) {
       console.error('Delete failed:', err);
-      setActionError('Node could not be purged. System protocol interference.');
+      setActionError(err.response?.data?.message || 'Node could not be purged. System protocol interference.');
     } finally {
       setIsDeleting(false);
     }

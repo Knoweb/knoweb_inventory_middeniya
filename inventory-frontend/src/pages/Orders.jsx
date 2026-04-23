@@ -772,17 +772,17 @@ function Orders() {
     try {
       if (deleteType === 'PO') {
         await orderService.deletePurchaseOrder(orderToDelete.id);
-        showSuccess(`Purchase Order #${orderToDelete.id} purged.`);
+        setActionSuccess(`Purchase Order #${orderToDelete.id} purged.`);
       } else {
         await orderService.deleteSalesOrder(orderToDelete.id);
-        showSuccess(`Sales Order #${orderToDelete.id} purged.`);
+        setActionSuccess(`Sales Order #${orderToDelete.id} purged.`);
       }
       setShowDeleteModal(false);
       setOrderToDelete(null);
       fetchOrders();
     } catch (err) {
       console.error('Delete failed:', err);
-      showError('Protocol sync failure. Node could not be deleted.');
+      setActionError(err.response?.data?.message || 'Protocol sync failure. Node could not be deleted.');
     } finally {
       setIsDeleting(false);
     }
