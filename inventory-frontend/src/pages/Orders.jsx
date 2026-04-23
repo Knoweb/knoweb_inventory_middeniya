@@ -789,7 +789,8 @@ function Orders() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {/* View Detail Modal Integration */}
       {viewOrder && (
         <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setViewOrder(null)}>
@@ -1066,6 +1067,7 @@ function Orders() {
           </div>
         </div>
       )}
+    </>
   );
 }
 
