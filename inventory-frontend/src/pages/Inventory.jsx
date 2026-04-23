@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { inventoryService } from '../services/api';
 import StockTransactionForm from '../components/StockTransactionForm';
-import { Package, Plus, Search, RefreshCw, ArrowDownLeft, ArrowUpRight, Repeat, Scale, Undo2, AlertCircle, XCircle, CheckCircle2 } from 'lucide-react';
+import { Package, Plus, Search, RefreshCw, ArrowDownLeft, ArrowUpRight, Repeat, Scale, Undo2, AlertCircle, XCircle, CheckCircle2, Trash2 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +56,14 @@ function Inventory() {
   const [showForm, setShowForm] = useState(false);
   const [txFilter, setTxFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Feedback & Delete states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [deleteType, setDeleteType] = useState(''); // 'STOCK' or 'TX'
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -74,6 +82,34 @@ function Inventory() {
       setLoading(false);
     }
   }, []);
+
+  const confirmDelete = (item, type) => {
+    setItemToDelete(item);
+    setDeleteType(type);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (deleteType === 'STOCK') {
+        await inventoryService.deleteStock(itemToDelete.id);
+        setActionSuccess(`Stock record for ${itemToDelete.productName} purged.`);
+      } else {
+        await inventoryService.deleteTransaction(itemToDelete.id);
+        setActionSuccess(`Transaction #${itemToDelete.id} purged.`);
+      }
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      fetchData();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      setActionError('Node could not be purged. System protocol interference.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -126,6 +162,28 @@ function Inventory() {
         >
           <Plus size={18} /> New Transaction
         </button>
+      </div>
+
+      {/* Notifications */}
+      <div className="space-y-3">
+        {actionSuccess && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-6 py-4 rounded-2xl flex items-center justify-between shadow-sm animate-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 size={20} className="text-emerald-500" />
+              <span className="font-bold text-sm">{actionSuccess}</span>
+            </div>
+            <button onClick={() => setActionSuccess('')}><XCircle size={16} /></button>
+          </div>
+        )}
+        {actionError && (
+          <div className="bg-rose-50 border border-rose-100 text-rose-700 px-6 py-4 rounded-2xl flex items-center justify-between shadow-sm animate-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={20} className="text-rose-500" />
+              <span className="font-bold text-sm tracking-tight">{actionError}</span>
+            </div>
+            <button onClick={() => setActionError('')}><XCircle size={16} /></button>
+          </div>
+        )}
       </div>
 
       {/* ── Stats Row ── */}
@@ -249,6 +307,7 @@ function Inventory() {
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Resv.</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Level Stats</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Updated</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -288,6 +347,11 @@ function Inventory() {
                         </td>
                         <td className="px-6 py-4"><StockLevelBar quantity={stock.quantity} reorderLevel={stock.reorderLevel} /></td>
                         <td className="px-6 py-4 text-[10px] font-bold text-slate-400 italic tracking-tighter uppercase whitespace-nowrap">{formatDate(stock.updatedAt)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button onClick={() => confirmDelete(stock, 'STOCK')} className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-all" title="Purge Stock Node">
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -313,6 +377,7 @@ function Inventory() {
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Delta</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reference</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Timestamp</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -340,6 +405,11 @@ function Inventory() {
                       </td>
                       <td className="px-6 py-4 text-xs font-bold text-slate-400 tracking-tighter max-w-[150px] truncate">{tx.referenceId || '—'}</td>
                       <td className="px-6 py-4 text-[10px] font-bold text-slate-400 italic tracking-tighter uppercase whitespace-nowrap">{formatDate(tx.createdAt || tx.transactionDate)}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button onClick={() => confirmDelete(tx, 'TX')} className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-all" title="Purge TX Record">
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -370,6 +440,53 @@ function Inventory() {
                 fetchData();
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="pt-10 pb-4 flex flex-col items-center text-center">
+              <div className="w-24 h-24 rounded-full bg-rose-50 flex items-center justify-center mb-8">
+                <Trash2 className="w-10 h-10 text-rose-500" />
+              </div>
+              
+              <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Purge {deleteType === 'STOCK' ? 'Stock Node' : 'Transaction'}</h3>
+              <p className="text-center px-10 text-slate-500 font-bold leading-relaxed mb-10">
+                {deleteType === 'STOCK' ? (
+                  <>Are you sure you want to remove <span className="text-slate-900">{itemToDelete?.productName}</span> at <span className="text-slate-900">{itemToDelete?.warehouseName}</span> from active inventory?</>
+                ) : (
+                  <>Are you sure you want to erase transaction <span className="text-slate-900">#{itemToDelete?.id}</span> from the ledger?</>
+                )}
+                <br /><span className="text-rose-500 mt-2 block italic text-xs">This action is irreversible and affects system integrity.</span>
+              </p>
+              
+              <div className="w-full px-8 flex gap-4 mb-8">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="flex-1 py-4 bg-slate-50 text-slate-600 font-black uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 py-4 bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-100 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:grayscale"
+                >
+                  {isDeleting ? (
+                    <RefreshCw className="animate-spin" size={18} />
+                  ) : (
+                    <>
+                      <Trash2 size={18} />
+                      Purge
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

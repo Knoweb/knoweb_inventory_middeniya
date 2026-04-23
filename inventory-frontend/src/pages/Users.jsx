@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { identityUserService, authService } from '../services/api';
 import { FaUser, FaEdit, FaTrash, FaPlus, FaSearch, FaBuilding, FaBriefcase } from 'react-icons/fa';
-import { Trash2, RefreshCw, CheckCircle2, ShieldCheck, UserPlus, Users as UsersIcon } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 
 const Users = () => {
@@ -22,11 +21,6 @@ const Users = () => {
     branchId: '',
     active: true,
   });
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -57,17 +51,19 @@ const Users = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (editingUser) {
+        await identityUserService.update(editingUser.id, formData);
+        showToast('User profile synchronization complete', 'success');
+      } else {
+        await authService.register(formData);
+        showToast('New user identity successfully established', 'success');
       }
-      setSuccessMessage(editingUser ? 'User profile updated successfully!' : 'New user identity successfully established!');
-      setShowSuccessModal(true);
       setShowModal(false);
       resetForm();
       fetchUsers();
     } catch (error) {
       console.error('Error saving user:', error);
-      showToast(error.response?.data?.message || 'Identity validation failed', 'error');
-    } finally {
-      setSubmitting(false);
+      showToast(error.response?.data?.message || 'Biometric/Identity validation failed', 'error');
     }
   };
 
@@ -87,26 +83,24 @@ const Users = () => {
     setShowModal(true);
   };
 
-  const confirmDelete = (user) => {
-    setUserToDelete(user);
-    setShowDeleteModal(true);
-  };
+  const handleDelete = async (id) => {
+    const isConfirmed = await confirm({
+      title: 'Purge User Identity',
+      message: 'This operation will permanently revoke all access for this identity. Confirm protocol execution?',
+      type: 'danger',
+      confirmLabel: 'Purge Identity',
+      cancelLabel: 'Retain User'
+    });
 
-  const handleDelete = async () => {
-    if (!userToDelete) return;
-    try {
-      setSubmitting(true);
-      await identityUserService.delete(userToDelete.id);
-      setSuccessMessage('User identity purged from system.');
-      setShowSuccessModal(true);
-      setShowDeleteModal(false);
-      setUserToDelete(null);
-      fetchUsers();
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      showToast('Identity revocation protocol failed', 'error');
-    } finally {
-      setSubmitting(false);
+    if (isConfirmed) {
+      try {
+        await identityUserService.delete(id);
+        showToast('User identity purged from live grid', 'warning');
+        fetchUsers();
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        showToast('Identity revocation protocol failed', 'error');
+      }
     }
   };
 
@@ -140,16 +134,11 @@ const Users = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', display: 'flex', alignItems: 'center', justifyCenter: 'center', boxShadow: '0 8px 16px -4px rgba(79, 70, 229, 0.4)' }}>
-             <UsersIcon color="white" size={24} style={{ margin: 'auto' }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: '1.875rem', fontWeight: '900', color: '#111827', letterSpacing: '-0.025em' }}>User & Employee Management</h1>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', fontWeight: '600' }}>
-              Manage access across ERP, HR, and Inventory
-            </p>
-          </div>
+        <div>
+          <h1>User Management</h1>
+          <p style={{ color: '#9ca3af', marginTop: '0.5rem' }}>
+            Manage system users and permissions
+          </p>
         </div>
         <button className="btn-primary" onClick={openAddModal}>
           <FaPlus /> Add User
@@ -260,7 +249,7 @@ const Users = () => {
                         </button>
                         <button
                           className="btn-icon"
-                          onClick={() => confirmDelete(user)}
+                          onClick={() => handleDelete(user.id)}
                           title="Delete"
                           style={{ color: '#ef4444' }}
                         >
@@ -385,75 +374,6 @@ const Users = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => !submitting && setShowDeleteModal(false)}>
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-            <div className="pt-10 pb-4 flex flex-col items-center text-center px-8">
-              <div className="w-24 h-24 rounded-full bg-rose-50 flex items-center justify-center mb-8">
-                <Trash2 className="w-10 h-10 text-rose-500" />
-              </div>
-              
-              <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Revoke Access</h3>
-              <p className="text-slate-500 font-bold leading-relaxed mb-10">
-                Are you sure you want to completely remove <span className="text-slate-800">{userToDelete?.username}</span>'s access? This action is irreversible.
-              </p>
-              
-              <div className="w-full flex gap-4 mb-8">
-                <button 
-                  onClick={() => setShowDeleteModal(false)}
-                  disabled={submitting}
-                  className="flex-1 py-4 bg-slate-50 text-slate-600 font-black uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={submitting}
-                  className="flex-1 py-4 bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-100 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:grayscale"
-                >
-                  {submitting ? (
-                    <RefreshCw className="animate-spin" size={18} />
-                  ) : (
-                    <>
-                      <Trash2 size={18} />
-                      Purge
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Success Success Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="pt-10 pb-4 flex flex-col items-center text-center px-8">
-              <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center mb-8">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-              </div>
-              
-              <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Success!</h3>
-              <p className="text-slate-500 font-bold leading-relaxed mb-10">
-                {successMessage}
-              </p>
-              
-              <div className="w-full mb-8">
-                <button 
-                  onClick={() => setShowSuccessModal(false)}
-                  className="w-full py-4 bg-emerald-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-600 transition-all active:scale-95"
-                >
-                  Great!
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

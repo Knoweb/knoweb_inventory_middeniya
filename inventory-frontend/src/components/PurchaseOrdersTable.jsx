@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Eye, CheckCircle2, Package, XCircle, Building2, Undo2, RefreshCw } from 'lucide-react';
+import { Search, Eye, CheckCircle2, Package, XCircle, Building2, Undo2, RefreshCw, Trash2 } from 'lucide-react';
 
 const STATUS_META = {
     PENDING: { label: 'Pending', icon: '🕐', cls: 'bg-amber-50 text-amber-700 border-amber-100' },
@@ -39,6 +39,7 @@ function PurchaseOrdersTable({
     onReceive,
     onCancel,
     onReturn,
+    onDelete,
     loading = false,
     processingOrderId = null,
 }) {
@@ -240,6 +241,14 @@ function PurchaseOrdersTable({
                                                             <XCircle size={16} />
                                                         </button>
                                                     )}
+
+                                                    <button
+                                                        className="p-2 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 border border-rose-100 shadow-sm transition-all"
+                                                        onClick={() => onDelete?.(order)}
+                                                        title="Purge Record"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

@@ -106,6 +106,8 @@ export const inventoryService = {
   updateStock: (id, stock) => apiClient.put(`/api/inventory/stocks/${id}`, stock),
   getAllTransactions: () => apiClient.get('/api/inventory/transactions'),
   createTransaction: (transaction) => apiClient.post('/api/inventory/transactions', transaction),
+  deleteStock: (id) => apiClient.delete(`/api/inventory/stocks/${id}`),
+  deleteTransaction: (id) => apiClient.delete(`/api/inventory/transactions/${id}`),
 };
 
 export const orderService = {
@@ -114,6 +116,8 @@ export const orderService = {
   getSalesOrders: () => apiClient.get('/api/orders/sales'),
   createSalesOrder: (order) => apiClient.post('/api/orders/sales', order),
   completeSalesOrder: (id) => apiClient.patch(`/api/orders/sales/${id}/complete`),
+  deletePurchaseOrder: (id) => apiClient.delete(`/api/orders/purchase/${id}`),
+  deleteSalesOrder: (id) => apiClient.delete(`/api/orders/sales/${id}`),
 };
 
 export const warehouseService = {

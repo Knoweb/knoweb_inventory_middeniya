@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import apiClient, { orderService, supplierService, productService, warehouseService } from '../services/api';
 import { useNotification } from '../context/NotificationContext';
 import PurchaseOrdersTable from '../components/PurchaseOrdersTable';
-import { ShoppingCart, DollarSign, X, Plus, Package, MessageSquare, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Layers, TrendingUp } from 'lucide-react';
+import { ShoppingCart, DollarSign, X, Plus, Package, MessageSquare, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Layers, TrendingUp, Trash2 } from 'lucide-react';
 
 // ── Initial form states ────────────────────────────────────────────────────────
 const INIT_PO = {
@@ -596,6 +596,10 @@ function Orders() {
   const [showReturnPO, setShowReturnPO] = useState(null); // stores the order to return
   const [viewOrder, setViewOrder] = useState(null);
   const [processingOrderId, setProcessingOrderId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+  const [deleteType, setDeleteType] = useState(''); // 'PO' or 'SO'
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getProductName = (productId) => {
     const p = products.find(p => String(p.id) === String(productId));
@@ -751,7 +755,37 @@ function Orders() {
       fetchOrders();
     } catch (e) {
       setActionError(e.response?.data?.error || 'Failed to complete order. Check stock availability.');
-    } finally { setProcessingOrderId(null); }
+    } finally {
+      setProcessingOrderId(null);
+    }
+  };
+
+  const confirmDelete = (order, type) => {
+    setOrderToDelete(order);
+    setDeleteType(type);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!orderToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (deleteType === 'PO') {
+        await orderService.deletePurchaseOrder(orderToDelete.id);
+        showSuccess(`Purchase Order #${orderToDelete.id} purged.`);
+      } else {
+        await orderService.deleteSalesOrder(orderToDelete.id);
+        showSuccess(`Sales Order #${orderToDelete.id} purged.`);
+      }
+      setShowDeleteModal(false);
+      setOrderToDelete(null);
+      fetchOrders();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      showError('Protocol sync failure. Node could not be deleted.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -921,6 +955,7 @@ function Orders() {
                 onReceive={handleReceive}
                 onCancel={handleCancel}
                 onReturn={handleReturnAction}
+                onDelete={(order) => confirmDelete(order, 'PO')}
                 processingOrderId={processingOrderId}
               />
             </div>
@@ -974,6 +1009,7 @@ function Orders() {
                                   {processingOrderId == order.id ? 'Processing...' : 'Mark Fulfilled'}
                                 </button>
                               )}
+                              <button onClick={() => confirmDelete(order, 'SO')} className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-all" title="Purge Record"><Trash2 size={16} /></button>
                               <button className="p-2 bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>
                             </div>
                           </td>
@@ -988,6 +1024,48 @@ function Orders() {
         </div>
       </div>
     </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="pt-10 pb-4 flex flex-col items-center text-center">
+              <div className="w-24 h-24 rounded-full bg-rose-50 flex items-center justify-center mb-8">
+                <Trash2 className="w-10 h-10 text-rose-500" />
+              </div>
+              
+              <h3 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Purge {deleteType === 'PO' ? 'Purchase' : 'Sales'} Record</h3>
+              <p className="text-center px-10 text-slate-500 font-bold leading-relaxed mb-10">
+                Are you sure you want to completely erase order <span className="text-slate-900">#{orderToDelete?.id}</span>? This action cannot be undone and will impact ledger history.
+              </p>
+              
+              <div className="w-full px-8 flex gap-4 mb-8">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="flex-1 py-4 bg-slate-50 text-slate-600 font-black uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 py-4 bg-rose-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-100 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:grayscale"
+                >
+                  {isDeleting ? (
+                    <RefreshCw className="animate-spin" size={18} />
+                  ) : (
+                    <>
+                      <Trash2 size={18} />
+                      Purge
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
 
