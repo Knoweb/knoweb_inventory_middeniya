@@ -501,6 +501,8 @@ public class InventoryService {
      */
     public List<InventoryTransaction> enrichTransactionsWithNames(List<InventoryTransaction> transactions) {
         return transactions.stream().map(this::enrichTransactionWithNames).collect(java.util.stream.Collectors.toList());
+    }
+
     /**
      * Delete a stock record by ID.
      */
