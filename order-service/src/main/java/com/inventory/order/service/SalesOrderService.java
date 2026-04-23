@@ -176,4 +176,15 @@ public class SalesOrderService {
                     "Stock deduction failed for product #" + productId + ": " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Delete a sales order by ID.
+     */
+    public void deleteOrder(Long id) {
+        if (!salesOrderRepository.existsById(id)) {
+            throw new IllegalArgumentException("Sales order not found: " + id);
+        }
+        salesOrderRepository.deleteById(id);
+        log.info("Sales order {} deleted from registry", id);
+    }
 }

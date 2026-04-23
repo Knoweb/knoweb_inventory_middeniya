@@ -275,5 +275,14 @@ public class PurchaseOrderService {
         order.setStatus(OrderStatus.CANCELLED);
         log.info("Purchase order {} cancelled", id);
         return purchaseOrderRepository.save(order);
+    /**
+     * Delete a purchase order by ID.
+     */
+    public void deleteOrder(Long id) {
+        if (!purchaseOrderRepository.existsById(id)) {
+            throw new IllegalArgumentException("Purchase order not found: " + id);
+        }
+        purchaseOrderRepository.deleteById(id);
+        log.info("Purchase order {} deleted from registry", id);
     }
 }

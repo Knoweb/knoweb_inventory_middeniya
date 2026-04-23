@@ -501,6 +501,26 @@ public class InventoryService {
      */
     public List<InventoryTransaction> enrichTransactionsWithNames(List<InventoryTransaction> transactions) {
         return transactions.stream().map(this::enrichTransactionWithNames).collect(java.util.stream.Collectors.toList());
+    /**
+     * Delete a stock record by ID.
+     */
+    public void deleteStock(Long id) {
+        if (!stockRepository.existsById(id)) {
+            throw new IllegalArgumentException("Stock record not found: " + id);
+        }
+        stockRepository.deleteById(id);
+        log.info("Stock record {} purged from active inventory", id);
+    }
+
+    /**
+     * Delete a transaction record by ID.
+     */
+    public void deleteTransaction(Long id) {
+        if (!transactionRepository.existsById(id)) {
+            throw new IllegalArgumentException("Transaction not found: " + id);
+        }
+        transactionRepository.deleteById(id);
+        log.info("Transaction record {} erased from ledger", id);
     }
 }
 

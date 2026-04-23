@@ -115,6 +115,20 @@ public class OrderController {
         }
     }
 
+    /** DELETE /api/orders/purchase/{id} — Purge order from registry */
+    @DeleteMapping("/purchase/{id}")
+    public ResponseEntity<?> deletePurchaseOrder(@PathVariable Long id) {
+        try {
+            purchaseOrderService.deleteOrder(id);
+            return ResponseEntity.ok(Map.of("message", "Purchase Order purged from registry"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ── Sales Orders ──────────────────────────────────────────────────────────
 
     /** GET /api/orders/sales — list sales orders for the caller's org */
@@ -164,5 +178,19 @@ public class OrderController {
         if (orgId == null)
             return ResponseEntity.ok(0L);
         return ResponseEntity.ok(salesOrderRepository.countByOrgId(orgId));
+    }
+
+    /** DELETE /api/orders/sales/{id} — Purge sales record */
+    @DeleteMapping("/sales/{id}")
+    public ResponseEntity<?> deleteSalesOrder(@PathVariable Long id) {
+        try {
+            salesOrderService.deleteOrder(id);
+            return ResponseEntity.ok(Map.of("message", "Sales Record purged from registry"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }

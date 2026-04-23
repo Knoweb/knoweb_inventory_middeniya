@@ -100,4 +100,32 @@ public class InventoryController {
             return ResponseEntity.ok(0L);
         return ResponseEntity.ok(inventoryService.getLowStockCountByOrg(orgId));
     }
+
+    /** DELETE /api/inventory/stocks/{id} — Purge stock node */
+    @DeleteMapping("/stocks/{id}")
+    public ResponseEntity<?> deleteStock(@PathVariable Long id) {
+        try {
+            inventoryService.deleteStock(id);
+            return ResponseEntity.ok(java.util.Map.of("message", "Stock record purged from active inventory"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** DELETE /api/inventory/transactions/{id} — Erase transaction from ledger */
+    @DeleteMapping("/transactions/{id}")
+    public ResponseEntity<?> deleteTransaction(@PathVariable Long id) {
+        try {
+            inventoryService.deleteTransaction(id);
+            return ResponseEntity.ok(java.util.Map.of("message", "Transaction erased from ledger"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
 }
