@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import apiClient, { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert, AlertTriangle, CheckCircle, Trash2, X, FileEdit, Info, AlertCircle, History } from 'lucide-react';
@@ -79,6 +79,24 @@ const QCDashboard = () => {
       setSubmitting(false);
     }
   };
+  
+  const handleDeleteHistory = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this inspection history record? This action cannot be undone.")) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      await manufacturingService.deleteInspection(id);
+      setCompletedInspections(prev => prev.filter(item => item.id !== id));
+      alert("Inspection history deleted successfully.");
+    } catch (err) {
+      console.error("Failed to delete inspection history:", err);
+      alert(err.userMessage || "Failed to delete inspection history record.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="p-6">
@@ -147,6 +165,7 @@ const QCDashboard = () => {
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Decision</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">QC Grade</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
+                  <th className="px-6 py-4 text-right font-semibold text-gray-600 uppercase text-xs tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,6 +176,15 @@ const QCDashboard = () => {
                     <td className="px-6 py-4"><span className={`text-xs font-bold uppercase px-3 py-1 rounded ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}</span></td>
                     <td className="px-6 py-4 font-semibold text-gray-700">{item.qualityGrade || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || 'N/A'}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => handleDeleteHistory(item.id)}
+                        className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Delete from history"
+                      >
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
