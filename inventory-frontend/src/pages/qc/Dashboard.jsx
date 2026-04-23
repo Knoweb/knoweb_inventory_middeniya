@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient, { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldAlert, AlertTriangle, CheckCircle, Trash2, X, FileEdit, Info, AlertCircle, History } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle, Trash2, X, FileEdit, Info, AlertCircle, History, RefreshCw } from 'lucide-react';
 
 const QCDashboard = () => {
   const { user } = useAuth();
