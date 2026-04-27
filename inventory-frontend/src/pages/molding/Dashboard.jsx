@@ -36,17 +36,28 @@ const MoldingDashboard = () => {
 
   const fetchRawMaterials = async () => {
     try {
-      const response = await manufacturingService.getRawMaterials(user?.orgId);
-      // If manufacturingService returns empty, try products directly or dummy for now
-      // Note: In real app, we might need a specific endpoint for inventory items
-      setRawMaterials(response.data || []);
+      console.log('Fetching products for org:', user?.orgId);
+      let response = await manufacturingService.getRawMaterials(user?.orgId);
+      console.log('Manufacturing Raw Materials:', response.data);
+      
+      let products = response.data || [];
+      
+      // Fallback: If no raw materials found, fetch all products
+      if (products.length === 0) {
+        console.log('No raw materials found, trying all products...');
+        const allProdResponse = await productService.getAll();
+        console.log('All Products:', allProdResponse.data);
+        products = allProdResponse.data || [];
+      }
+      
+      setRawMaterials(products);
       
       // If we have materials, set the first one as default
-      if (response.data && response.data.length > 0) {
+      if (products.length > 0) {
         setCreateFormData(prev => ({
           ...prev,
-          productId: response.data[0].productId,
-          itemName: response.data[0].itemName || response.data[0].name
+          productId: products[0].productId || products[0].id,
+          itemName: products[0].itemName || products[0].name
         }));
       }
     } catch (error) {
