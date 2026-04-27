@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info, Plus, History, PlayCircle, Clock, AlertTriangle, Trash2 } from 'lucide-react';
-import { manufacturingService } from '../../services/api';
+import { manufacturingService, productService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
