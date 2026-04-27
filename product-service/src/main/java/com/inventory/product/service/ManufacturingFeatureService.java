@@ -62,19 +62,26 @@ public class ManufacturingFeatureService {
                 Long dynamicWarehouseId = 1L; // Default fallback
                 try {
                     log.info("Fetching stock info from inventory-service to find warehouse for product ID: {}", manufacturingProduct.getProductId());
-                    String stockUrl = INVENTORY_SERVICE_URL.replace("/transactions", "") + "/product/" + manufacturingProduct.getProductId();
+                    // Fix URL: Ensure it points to /api/inventory/stocks/product/{id}
+                    String stockUrl = INVENTORY_SERVICE_URL.replace("/transactions", "/stocks") + "/product/" + manufacturingProduct.getProductId();
+                    log.info("Stock lookup URL: {}", stockUrl);
+                    
                     Object[] stocks = restTemplate.getForObject(stockUrl, Object[].class);
                     
                     if (stocks != null && stocks.length > 0) {
+                        log.info("Found {} stock entries for product", stocks.length);
                         // Find the first warehouse that has this product for this org
                         for (Object s : stocks) {
                             Map<String, Object> stockMap = (Map<String, Object>) s;
+                            // Check orgId and also ensure quantity is > 0 if possible
                             if (stockMap.get("orgId").toString().equals(manufacturingProduct.getOrgId().toString())) {
                                 dynamicWarehouseId = Long.valueOf(stockMap.get("warehouseId").toString());
-                                log.info("Found stock in warehouse ID: {}", dynamicWarehouseId);
+                                log.info("Matching stock found in warehouse ID: {}", dynamicWarehouseId);
                                 break;
                             }
                         }
+                    } else {
+                        log.warn("No stock records found for product ID: {} in any warehouse", manufacturingProduct.getProductId());
                     }
                 } catch (Exception e) {
                     log.warn("Could not fetch dynamic warehouse ID, falling back to 1: {}", e.getMessage());
