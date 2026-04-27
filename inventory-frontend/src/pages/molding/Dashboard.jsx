@@ -485,7 +485,7 @@ const MoldingDashboard = () => {
                   className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400"
                   value={createFormData.productId} 
                   onChange={(e) => {
-                    const selectedProduct = rawMaterials.find(rm => rm.productId.toString() === e.target.value);
+                    const selectedProduct = rawMaterials.find(rm => (rm.productId || rm.id).toString() === e.target.value);
                     setCreateFormData({
                       ...createFormData, 
                       productId: e.target.value,
@@ -495,8 +495,8 @@ const MoldingDashboard = () => {
                 >
                   <option value="" disabled>Select a product...</option>
                   {rawMaterials.map(rm => (
-                    <option key={rm.productId} value={rm.productId}>
-                      {rm.itemName || rm.name} (ID: {rm.productId})
+                    <option key={rm.productId || rm.id} value={rm.productId || rm.id}>
+                      {rm.itemName || rm.name} (ID: {rm.productId || rm.id})
                     </option>
                   ))}
                   {rawMaterials.length === 0 && <option value="" disabled>No raw materials found in inventory</option>}
