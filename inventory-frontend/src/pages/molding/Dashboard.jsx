@@ -72,6 +72,19 @@ const MoldingDashboard = () => {
       return;
     }
     
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate stock before submitting
+    const selectedProduct = rawMaterials.find(rm => (rm.productId || rm.id).toString() === createFormData.productId.toString());
+    const availableQty = selectedProduct ? (selectedProduct.availableQuantity || selectedProduct.quantity || 0) : 0;
+    const requestedQty = parseInt(createFormData.quantity);
+
+    if (requestedQty > availableQty) {
+      showToast(`Insufficient stock! Available: ${availableQty}, Requested: ${requestedQty}`, 'error');
+      return;
+    }
+
     try {
       setLoading(true);
       const payload = {
@@ -82,7 +95,7 @@ const MoldingDashboard = () => {
         batchNumber: createFormData.batchNumber,
         orgId: user?.orgId,
         manufacturingAttributes: {
-          quantity: parseInt(createFormData.quantity),
+          quantity: requestedQty,
           itemName: createFormData.itemName,
           batchNumber: createFormData.batchNumber
         }
@@ -499,7 +512,7 @@ const MoldingDashboard = () => {
                   <option value="" disabled>Select a product...</option>
                   {rawMaterials.map(rm => (
                     <option key={rm.productId || rm.id} value={rm.productId || rm.id}>
-                      {rm.itemName || rm.name} (ID: {rm.productId || rm.id})
+                      {rm.itemName || rm.name} (ID: {rm.productId || rm.id}) - Stock: {rm.availableQuantity || rm.quantity || 0}
                     </option>
                   ))}
                   {rawMaterials.length === 0 && <option value="" disabled>No raw materials found in inventory</option>}
