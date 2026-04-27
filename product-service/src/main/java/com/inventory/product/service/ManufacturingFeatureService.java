@@ -32,34 +32,51 @@ public class ManufacturingFeatureService {
         log.info("Creating manufacturing product for productId: {}, type: {}", 
             manufacturingProduct.getProductId(), manufacturingProduct.getProductType());
         
-        // If it's a WIP (like Molding start), deduct the raw material from inventory
-        if ("WIP".equals(manufacturingProduct.getProductType()) || "WIP_MOLDING".equals(manufacturingProduct.getWipStatus())) {
+        // Deduct from inventory if it's a WIP or Molding product
+        log.info("Checking if stock deduction is needed for product: {}, Type: {}, WIP Status: {}", 
+            manufacturingProduct.getProductId(), manufacturingProduct.getProductType(), manufacturingProduct.getWipStatus());
+
+        if ("WIP".equals(manufacturingProduct.getProductType()) || 
+            "WIP_MOLDING".equals(manufacturingProduct.getWipStatus()) ||
+            "MOLDING".equals(manufacturingProduct.getProductType())) {
+            
             try {
-                log.info("Deducting raw material stock for molding batch. ProductId: {}, Qty: {}", 
-                    manufacturingProduct.getProductId(), manufacturingProduct.getManufacturingAttributes().get("quantity"));
+                log.info("Attempting to deduct stock from inventory for product ID: {} with quantity: {}", 
+                    manufacturingProduct.getProductId(), manufacturingProduct.getManufacturingAttributes() != null ? manufacturingProduct.getManufacturingAttributes().get("quantity") : "unknown");
                 
-                java.util.Map<String, Object> transaction = new java.util.HashMap<>();
+                Map<String, Object> transaction = new HashMap<>();
                 transaction.put("productId", manufacturingProduct.getProductId());
-                transaction.put("quantity", manufacturingProduct.getManufacturingAttributes().get("quantity"));
+                
+                // Try to get quantity from manufacturingAttributes or default to 1 if not found
+                Object qty = 1;
+                if (manufacturingProduct.getManufacturingAttributes() != null && manufacturingProduct.getManufacturingAttributes().get("quantity") != null) {
+                    qty = manufacturingProduct.getManufacturingAttributes().get("quantity");
+                }
+                transaction.put("quantity", qty);
+                
                 transaction.put("type", "OUT");
                 transaction.put("orgId", manufacturingProduct.getOrgId());
-                transaction.put("warehouseId", 1); // Default to warehouse 1, should be dynamic if possible
+                transaction.put("warehouseId", 1); // Default to 1, we might need to make this dynamic later
                 
-                String batchNum = "";
+                String batchNum = "N/A";
                 if (manufacturingProduct.getManufacturingAttributes() != null && 
-                    manufacturingProduct.getManufacturingAttributes().containsKey("batchNumber")) {
+                    manufacturingProduct.getManufacturingAttributes().get("batchNumber") != null) {
                     batchNum = String.valueOf(manufacturingProduct.getManufacturingAttributes().get("batchNumber"));
                 }
                 
-                transaction.put("remarks", "Molding Batch Started: " + batchNum);
+                transaction.put("remarks", "Molding Batch Auto-Deduction: " + batchNum);
 
+                log.info("Sending transaction to inventory-service: {}", transaction);
                 restTemplate.postForObject(INVENTORY_SERVICE_URL, transaction, Object.class);
-                log.info("Successfully deducted stock from inventory-service");
+                log.info("Successfully sent deduction request to inventory-service");
+                
             } catch (Exception e) {
                 log.error("Failed to deduct stock from inventory: {}", e.getMessage());
-                // In a production environment, you might want to throw an exception here 
-                // to rollback the batch creation if stock deduction fails.
+                // We don't throw exception here to prevent blocking the WIP creation, 
+                // but in production we might want to handle this more strictly.
             }
+        } else {
+            log.info("No stock deduction needed for this product type/status");
         }
 
         // Set wipStartDate if not already set
