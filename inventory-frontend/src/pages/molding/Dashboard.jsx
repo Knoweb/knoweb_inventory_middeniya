@@ -73,6 +73,7 @@ const MoldingDashboard = () => {
     }
     
     try {
+      setLoading(true);
       const payload = {
         productId: parseInt(createFormData.productId),
         productType: 'WIP',
@@ -93,6 +94,8 @@ const MoldingDashboard = () => {
     } catch (error) {
       console.error('Error creating batch:', error);
       showToast('Failed to start molding batch. Check inventory levels.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
