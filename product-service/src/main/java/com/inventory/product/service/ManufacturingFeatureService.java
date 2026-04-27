@@ -44,7 +44,14 @@ public class ManufacturingFeatureService {
                 transaction.put("type", "OUT");
                 transaction.put("orgId", manufacturingProduct.getOrgId());
                 transaction.put("warehouseId", 1); // Default to warehouse 1, should be dynamic if possible
-                transaction.put("remarks", "Molding Batch Started: " + manufacturingProduct.getBatchNumber());
+                
+                String batchNum = "";
+                if (manufacturingProduct.getManufacturingAttributes() != null && 
+                    manufacturingProduct.getManufacturingAttributes().containsKey("batchNumber")) {
+                    batchNum = String.valueOf(manufacturingProduct.getManufacturingAttributes().get("batchNumber"));
+                }
+                
+                transaction.put("remarks", "Molding Batch Started: " + batchNum);
 
                 restTemplate.postForObject(INVENTORY_SERVICE_URL, transaction, Object.class);
                 log.info("Successfully deducted stock from inventory-service");
