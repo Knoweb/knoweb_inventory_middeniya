@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, ArrowRight, Play, CheckCircle2, Box, Info, Plus, History, PlayCircle, Clock, AlertTriangle, Trash2 } from 'lucide-react';
-import { manufacturingService, productService } from '../../services/api';
+import { manufacturingService, productService, inventoryService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -48,6 +48,26 @@ const MoldingDashboard = () => {
         const allProdResponse = await productService.getAll();
         console.log('All Products:', allProdResponse.data);
         products = allProdResponse.data || [];
+      }
+
+      // FETCH ACTUAL STOCK LEVELS FROM INVENTORY
+      try {
+        console.log('Fetching stock levels for org:', user?.orgId);
+        const stockResponse = await inventoryService.getAllStocks(user?.orgId);
+        const allStocks = stockResponse.data || [];
+        console.log('Stock data received:', allStocks);
+        
+        // Merge stock info into products
+        products = products.map(p => {
+          const pId = (p.productId || p.id).toString();
+          const stockEntry = allStocks.find(s => s.productId.toString() === pId);
+          return {
+            ...p,
+            availableQuantity: stockEntry ? stockEntry.availableQuantity : 0
+          };
+        });
+      } catch (stockError) {
+        console.error('Error fetching stock levels:', stockError);
       }
       
       setRawMaterials(products);
