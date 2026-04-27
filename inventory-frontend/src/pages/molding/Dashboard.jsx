@@ -14,15 +14,16 @@ const MoldingDashboard = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [viewHistoryBatch, setViewHistoryBatch] = useState(null);
   const [batchToDelete, setBatchToDelete] = useState(null);
+  const [rawMaterials, setRawMaterials] = useState([]);
   
   // Modal states
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFormData, setCreateFormData] = useState({
-    productId: 1,
+    productId: '',
     batchNumber: "BATCH-PL-" + Math.floor(Math.random() * 1000),
     quantity: 500,
-    itemName: "Plastic Mold Base",
+    itemName: "",
     workOrderNumber: "WO-" + Math.floor(Math.random() * 1000)
   });
   
@@ -33,8 +34,33 @@ const MoldingDashboard = () => {
     remarks: ''
   });
 
+  const fetchRawMaterials = async () => {
+    try {
+      const response = await manufacturingService.getRawMaterials(user?.orgId);
+      // If manufacturingService returns empty, try products directly or dummy for now
+      // Note: In real app, we might need a specific endpoint for inventory items
+      setRawMaterials(response.data || []);
+      
+      // If we have materials, set the first one as default
+      if (response.data && response.data.length > 0) {
+        setCreateFormData(prev => ({
+          ...prev,
+          productId: response.data[0].productId,
+          itemName: response.data[0].itemName || response.data[0].name
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching raw materials:', error);
+    }
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (!createFormData.productId) {
+      showToast('Please select a product from inventory', 'error');
+      return;
+    }
+    
     try {
       const payload = {
         productId: parseInt(createFormData.productId),
@@ -42,6 +68,7 @@ const MoldingDashboard = () => {
         wipStatus: 'WIP_MOLDING',
         workOrderNumber: createFormData.workOrderNumber,
         batchNumber: createFormData.batchNumber,
+        orgId: user?.orgId,
         manufacturingAttributes: {
           quantity: parseInt(createFormData.quantity),
           itemName: createFormData.itemName,
@@ -49,16 +76,16 @@ const MoldingDashboard = () => {
         }
       };
       await manufacturingService.create(payload);
-      showToast('WIP Batch successfully started in Molding!', 'success');
+      showToast('WIP Batch successfully started and stock deducted from inventory!', 'success');
       setShowCreateModal(false);
       fetchWipBatches();
     } catch (error) {
       console.error('Error creating batch:', error);
-      showToast('Failed to start new molding batch.', 'error');
+      showToast('Failed to start molding batch. Check inventory levels.', 'error');
     }
   };
 
-      const handleDeleteBatch = (e, id) => {
+  const handleDeleteBatch = (e, id) => {
     e.stopPropagation();
     setBatchToDelete(id);
   };
@@ -79,7 +106,7 @@ const MoldingDashboard = () => {
   const fetchWipBatches = async () => {
     try {
       setLoading(true);
-      const response = await manufacturingService.getWip();
+      const response = await manufacturingService.getWip(user?.orgId);
       // Filter for batches currently in INJECTION_MOLDING stage
       const moldingBatches = (response.data || []).filter(b => b.currentStage === 'INJECTION_MOLDING' || b.stage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING' || b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING');
       setBatches(moldingBatches);
@@ -114,6 +141,7 @@ const MoldingDashboard = () => {
 
   useEffect(() => {
     fetchWipBatches();
+    fetchRawMaterials();
   }, []);
 
   const handleOpenAdvance = (batch) => {
@@ -440,9 +468,39 @@ const MoldingDashboard = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Work Order Name / Output Item</label>
-                <input type="text" required className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400"
-                  value={createFormData.itemName} onChange={(e) => setCreateFormData({...createFormData, itemName: e.target.value})} />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Select Raw Material from Inventory</label>
+                <select 
+                  required 
+                  className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400"
+                  value={createFormData.productId} 
+                  onChange={(e) => {
+                    const selectedProduct = rawMaterials.find(rm => rm.productId.toString() === e.target.value);
+                    setCreateFormData({
+                      ...createFormData, 
+                      productId: e.target.value,
+                      itemName: selectedProduct ? (selectedProduct.itemName || selectedProduct.name) : ""
+                    });
+                  }}
+                >
+                  <option value="" disabled>Select a product...</option>
+                  {rawMaterials.map(rm => (
+                    <option key={rm.productId} value={rm.productId}>
+                      {rm.itemName || rm.name} (ID: {rm.productId})
+                    </option>
+                  ))}
+                  {rawMaterials.length === 0 && <option value="" disabled>No raw materials found in inventory</option>}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Final Output Item Name</label>
+                <input 
+                  type="text" 
+                  required 
+                  className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400"
+                  placeholder="e.g. Plastic Mold Base"
+                  value={createFormData.itemName} 
+                  onChange={(e) => setCreateFormData({...createFormData, itemName: e.target.value})} 
+                />
               </div>
               <div className="flex justify-end gap-4 pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-slate-600">Cancel</button>

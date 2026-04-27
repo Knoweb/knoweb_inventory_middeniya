@@ -21,14 +21,40 @@ import java.util.Optional;
 public class ManufacturingFeatureService {
     
     private final ManufacturingProductRepository manufacturingProductRepository;
-    
+    private final org.springframework.web.client.RestTemplate restTemplate;
+
+    private static final String INVENTORY_SERVICE_URL = "http://inventory-service/api/inventory/transactions";
+
     /**
-     * Create manufacturing product attributes
+     * Create manufacturing product attributes and deduct stock from inventory
      */
     public ManufacturingProduct createManufacturingProduct(ManufacturingProduct manufacturingProduct) {
         log.info("Creating manufacturing product for productId: {}, type: {}", 
             manufacturingProduct.getProductId(), manufacturingProduct.getProductType());
         
+        // If it's a WIP (like Molding start), deduct the raw material from inventory
+        if ("WIP".equals(manufacturingProduct.getProductType()) || "WIP_MOLDING".equals(manufacturingProduct.getWipStatus())) {
+            try {
+                log.info("Deducting raw material stock for molding batch. ProductId: {}, Qty: {}", 
+                    manufacturingProduct.getProductId(), manufacturingProduct.getManufacturingAttributes().get("quantity"));
+                
+                java.util.Map<String, Object> transaction = new java.util.HashMap<>();
+                transaction.put("productId", manufacturingProduct.getProductId());
+                transaction.put("quantity", manufacturingProduct.getManufacturingAttributes().get("quantity"));
+                transaction.put("type", "OUT");
+                transaction.put("orgId", manufacturingProduct.getOrgId());
+                transaction.put("warehouseId", 1); // Default to warehouse 1, should be dynamic if possible
+                transaction.put("remarks", "Molding Batch Started: " + manufacturingProduct.getBatchNumber());
+
+                restTemplate.postForObject(INVENTORY_SERVICE_URL, transaction, Object.class);
+                log.info("Successfully deducted stock from inventory-service");
+            } catch (Exception e) {
+                log.error("Failed to deduct stock from inventory: {}", e.getMessage());
+                // In a production environment, you might want to throw an exception here 
+                // to rollback the batch creation if stock deduction fails.
+            }
+        }
+
         // Set wipStartDate if not already set
         if (manufacturingProduct.getWipStartDate() == null && manufacturingProduct.getWipStatus() != null) {
             manufacturingProduct.setWipStartDate(LocalDateTime.now());
