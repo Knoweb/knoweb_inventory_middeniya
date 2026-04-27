@@ -55,10 +55,32 @@ public class ManufacturingFeatureService {
                     qty = manufacturingProduct.getManufacturingAttributes().get("quantity");
                 }
                 transaction.put("quantity", qty);
-                
                 transaction.put("type", "OUT");
                 transaction.put("orgId", manufacturingProduct.getOrgId());
-                transaction.put("warehouseId", 1); // Default to 1, we might need to make this dynamic later
+                
+                // DYNAMIC WAREHOUSE FETCH: Find where this product actually has stock
+                Long dynamicWarehouseId = 1L; // Default fallback
+                try {
+                    log.info("Fetching stock info from inventory-service to find warehouse for product ID: {}", manufacturingProduct.getProductId());
+                    String stockUrl = INVENTORY_SERVICE_URL.replace("/transactions", "") + "/product/" + manufacturingProduct.getProductId();
+                    Object[] stocks = restTemplate.getForObject(stockUrl, Object[].class);
+                    
+                    if (stocks != null && stocks.length > 0) {
+                        // Find the first warehouse that has this product for this org
+                        for (Object s : stocks) {
+                            Map<String, Object> stockMap = (Map<String, Object>) s;
+                            if (stockMap.get("orgId").toString().equals(manufacturingProduct.getOrgId().toString())) {
+                                dynamicWarehouseId = Long.valueOf(stockMap.get("warehouseId").toString());
+                                log.info("Found stock in warehouse ID: {}", dynamicWarehouseId);
+                                break;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not fetch dynamic warehouse ID, falling back to 1: {}", e.getMessage());
+                }
+                
+                transaction.put("warehouseId", dynamicWarehouseId);
                 
                 String batchNum = "N/A";
                 if (manufacturingProduct.getManufacturingAttributes() != null && 
