@@ -72,9 +72,6 @@ const MoldingDashboard = () => {
       return;
     }
     
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    
     // Validate stock before submitting
     const selectedProduct = rawMaterials.find(rm => (rm.productId || rm.id).toString() === createFormData.productId.toString());
     const availableQty = selectedProduct ? (selectedProduct.availableQuantity || selectedProduct.quantity || 0) : 0;
