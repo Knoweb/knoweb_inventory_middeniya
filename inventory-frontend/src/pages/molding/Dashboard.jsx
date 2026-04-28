@@ -221,6 +221,7 @@ const MoldingDashboard = () => {
             moldingScrap: 0,
             lastStage: 'MOLDING',
             moldingCompleted: true,
+            moldingPassedQty: validQty,
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_ASSEMBLE'
@@ -245,6 +246,7 @@ const MoldingDashboard = () => {
             batchNumber: `${baseBatchNumber}-QC`,
             lastStage: 'MOLDING',
             moldingCompleted: true,
+            moldingPassedQty: scrap,
             isRecovered: true
           }
         };
@@ -261,7 +263,8 @@ const MoldingDashboard = () => {
             moldingScrap: scrap,
             scrapRecorded: scrap,
             lastStage: 'MOLDING',
-            moldingCompleted: true
+            moldingCompleted: true,
+            moldingPassedQty: validQty
           }
         };
         
@@ -663,9 +666,9 @@ const MoldingDashboard = () => {
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passed Qty</span>
                     <span className="text-xl font-black text-slate-700">
-                      {parseInt(viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0) + 
-                       parseInt(viewHistoryBatch.manufacturingAttributes?.assembleScrap || 0) + 
-                       parseInt(viewHistoryBatch.manufacturingAttributes?.primaryScrap || 0)}
+                      {viewHistoryBatch.manufacturingAttributes?.moldingPassedQty || 
+                       viewHistoryBatch.quantity || 
+                       viewHistoryBatch.manufacturingAttributes?.quantity || 0}
                     </span>
                 </div>
                 <div className="flex flex-col">

@@ -117,6 +117,7 @@ const AssembleDashboard = () => {
             assembleScrap: 0,
             lastStage: 'ASSEMBLE',
             assembleCompleted: true,
+            assemblePassedQty: validQty,
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_PRIMARY'
@@ -141,6 +142,7 @@ const AssembleDashboard = () => {
             batchNumber: newBatchNumber,
             lastStage: 'ASSEMBLE',
             assembleCompleted: true,
+            assemblePassedQty: scrap,
             isRecovered: true
           }
         };
@@ -157,7 +159,8 @@ const AssembleDashboard = () => {
             assembleScrap: scrap,
             scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
             lastStage: 'ASSEMBLE',
-            assembleCompleted: true
+            assembleCompleted: true,
+            assemblePassedQty: validQty
           }
         };
         
@@ -374,8 +377,9 @@ const AssembleDashboard = () => {
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passed Qty</span>
                     <span className="text-xl font-black text-slate-700">
-                      {parseInt(viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0) + 
-                       parseInt(viewHistoryBatch.manufacturingAttributes?.primaryScrap || 0)}
+                      {viewHistoryBatch.manufacturingAttributes?.assemblePassedQty || 
+                       viewHistoryBatch.quantity || 
+                       viewHistoryBatch.manufacturingAttributes?.quantity || 0}
                     </span>
                 </div>
                 <div className="flex flex-col">

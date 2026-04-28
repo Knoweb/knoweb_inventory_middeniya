@@ -115,6 +115,7 @@ const PrimaryDashboard = () => {
             primaryScrap: 0,
             lastStage: 'PRIMARY',
             primaryCompleted: true,
+            primaryPassedQty: validQty,
             notes: 'Good units from split batch'
           },
           wipStatus: 'FINISHED_GOOD'
@@ -143,6 +144,7 @@ const PrimaryDashboard = () => {
             batchNumber: newBatchNumber,
             lastStage: 'PRIMARY',
             primaryCompleted: true,
+            primaryPassedQty: scrap,
             isRecovered: true
           }
         };
@@ -159,7 +161,8 @@ const PrimaryDashboard = () => {
             primaryScrap: scrap,
             scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
             lastStage: 'PRIMARY',
-            primaryCompleted: true
+            primaryCompleted: true,
+            primaryPassedQty: validQty
           }
         };
 
@@ -376,7 +379,11 @@ const PrimaryDashboard = () => {
               <div className="grid grid-cols-2 gap-4 mt-4 py-4 border-y border-slate-50">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passed Qty</span>
-                  <span className="text-xl font-black text-slate-700">{viewHistoryBatch.quantity || viewHistoryBatch.manufacturingAttributes?.quantity || 0}</span>
+                  <span className="text-xl font-black text-slate-700">
+                    {viewHistoryBatch.manufacturingAttributes?.primaryPassedQty || 
+                     viewHistoryBatch.quantity || 
+                     viewHistoryBatch.manufacturingAttributes?.quantity || 0}
+                  </span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Primary Scrap</span>

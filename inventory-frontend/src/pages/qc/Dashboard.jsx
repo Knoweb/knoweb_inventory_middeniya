@@ -197,7 +197,10 @@ const QCDashboard = () => {
                     <td className="px-6 py-4 text-sm text-gray-600 font-medium italic">"{item.remarks || item.defectDescription || 'N/A'}"</td>
                     <td className="px-6 py-4">
                       <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">
-                        {item.reason || item.defectDescription || 'Production'}
+                        {item.manufacturingAttributes?.lastStage === 'MOLDING' ? 'Molding' : 
+                         item.manufacturingAttributes?.lastStage === 'ASSEMBLE' ? 'Assembly' : 
+                         item.manufacturingAttributes?.lastStage === 'PRIMARY' ? 'Primary Finishing' : 
+                         item.reason || item.defectDescription || 'Production'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -244,7 +247,10 @@ const QCDashboard = () => {
                   <td className="px-6 py-4 font-black text-red-500 text-lg">{item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0}</td>
                   <td className="px-6 py-4">
                     <span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">
-                      {item.reason || item.notes || 'Production'}
+                      {item.manufacturingAttributes?.lastStage === 'MOLDING' ? 'Molding' : 
+                       item.manufacturingAttributes?.lastStage === 'ASSEMBLE' ? 'Assembly' : 
+                       item.manufacturingAttributes?.lastStage === 'PRIMARY' ? 'Primary Finishing' : 
+                       item.reason || item.notes || 'Production'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 font-medium italic">Pending Inspection</td>
