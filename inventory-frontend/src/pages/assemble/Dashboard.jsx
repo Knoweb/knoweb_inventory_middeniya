@@ -14,6 +14,7 @@ const AssembleDashboard = () => {
   const [batchToDelete, setBatchToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Modal states
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
@@ -97,6 +98,7 @@ const AssembleDashboard = () => {
   const handleAdvanceSubmit = async (e) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       const processed = parseInt(formData.processedQuantity) || 0;
       const scrap = parseInt(formData.scrapQuantity) || 0;
       const validQty = Math.max(0, processed - scrap); // Good units
@@ -179,6 +181,8 @@ const AssembleDashboard = () => {
       console.error('Error advancing batch:', error);
       showToast('Failed to advance batch to Primary Finishing.', 'error');
       setShowAdvanceModal(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -471,10 +475,11 @@ const AssembleDashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-10 py-4 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-emerald-200 hover:bg-slate-900 transition-all active:scale-95 flex items-center gap-3"
+                  disabled={isSubmitting}
+                  className="px-10 py-4 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-emerald-200 hover:bg-slate-900 transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ArrowRight size={16} />
-                  Confirm & Advance
+                  {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : <ArrowRight size={16} />}
+                  {isSubmitting ? 'Processing...' : 'Confirm & Advance'}
                 </button>
               </div>
             </form>

@@ -59,6 +59,13 @@ const QCDashboard = () => {
   };
 
   const handleConfirmDecision = async () => {
+    const maxQty = selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0;
+
+    if (actionType === "REPAIR" && (qcQty > maxQty || qcQty <= 0)) {
+      alert(`Invalid Quantity! You can only recover between 1 and ${maxQty} items.`);
+      return;
+    }
+
     if (!remarks.trim()) {
       alert("Please provide remarks for this QC decision.");
       return;

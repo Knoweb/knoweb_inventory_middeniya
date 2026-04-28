@@ -14,6 +14,7 @@ const PrimaryDashboard = () => {
   const [batchToDelete, setBatchToDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Modal states
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
@@ -60,7 +61,7 @@ const PrimaryDashboard = () => {
         if (b.manufacturingAttributes?.lastStage === 'PRIMARY') return true;
 
         // Fallback for items sent to QC
-        const isFromPrimaryQC = (b.wipStatus === 'REWORK' || b.wipStatus === 'QC_HOLD') && (
+        const isFromPrimaryQC = (b.wipStatus === 'REWORK' || b.wipStatus === 'QC_HOLD' || b.status === 'REWORK' || b.status === 'QC_HOLD') && (
           b.defectDescription?.toLowerCase().includes('primary') || 
           b.defectDescription?.toLowerCase().includes('[primary]') ||
           b.defectDescription?.toLowerCase().includes('finishing')
@@ -97,6 +98,7 @@ const PrimaryDashboard = () => {
   const handleAdvanceSubmit = async (e) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       const processed = parseInt(formData.processedQuantity) || 0;
       const scrap = parseInt(formData.scrapQuantity) || 0;
       const validQty = Math.max(0, processed - scrap); // Good units
@@ -120,12 +122,16 @@ const PrimaryDashboard = () => {
         await manufacturingService.updateWipStatus(selectedBatch.id, 'FINISHED_GOOD');
 
         // 2. Create a NEW batch for the items that need QC
+        const baseBatchNumber = selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber || selectedBatch.workOrderNumber || `BATCH-${selectedBatch.id}`;
+        const cleanBatchNumber = String(baseBatchNumber).replace(/-QC$/, '');
+        const newBatchNumber = cleanBatchNumber + "-QC";
+
         const qcBatchPayload = {
           productId: selectedBatch.productId,
           productType: 'WIP',
           wipStatus: 'REWORK',
           workOrderNumber: selectedBatch.workOrderNumber,
-          batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+          batchNumber: newBatchNumber,
           orgId: user?.orgId,
           inspectionStatus: 'PENDING',
           defectDescription: `[Primary Finishing] ${formData.remarks || 'Flagged for Inspection'}`,
@@ -133,7 +139,7 @@ const PrimaryDashboard = () => {
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
-            batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+            batchNumber: newBatchNumber,
             lastStage: 'PRIMARY',
             isRecovered: true
           }
@@ -182,6 +188,8 @@ const PrimaryDashboard = () => {
       console.error('Error advancing batch:', error);
       showToast('Failed to advance batch to Stores.', 'error');
       setShowAdvanceModal(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -261,7 +269,7 @@ const PrimaryDashboard = () => {
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    {batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? (
+                    {batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? (
                       <div className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
                         <AlertTriangle size={12} /> Sent to QC (Unchecked)
                       </div>
@@ -278,18 +286,18 @@ const PrimaryDashboard = () => {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <h3 className={`text-xl font-bold line-through decoration-2 mb-1 ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-900 decoration-rose-300' : 'text-slate-800 decoration-slate-300'}`}>
+                  <h3 className={`text-xl font-bold line-through decoration-2 mb-1 ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'text-rose-900 decoration-rose-300' : 'text-slate-800 decoration-slate-300'}`}>
                     {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}
                   </h3>
-                  <p className={`text-sm font-semibold mb-4 ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-600/80' : 'text-slate-500'}`}>
+                  <p className={`text-sm font-semibold mb-4 ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'text-rose-600/80' : 'text-slate-500'}`}>
                     {batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}
                   </p>
                   
-                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'border-rose-100/50' : 'border-slate-200'}`}>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-600' : 'text-amber-600'}`}>
+                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'border-rose-100/50' : 'border-slate-200'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'text-rose-600' : 'text-amber-600'}`}>
                       View Details
                     </span>
-                    <ArrowRight size={14} className={batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' ? 'text-rose-500' : 'text-amber-500'} />
+                    <ArrowRight size={14} className={batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'text-rose-500' : 'text-amber-500'} />
                   </div>
                 </div>
               ))}
@@ -376,17 +384,17 @@ const PrimaryDashboard = () => {
                 </div>
               </div>
 
-<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
+<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+                  <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
                   </div>
                   <div>
-                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
+                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
                       Progress
                     </span>
-                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'text-rose-700' : 'text-emerald-700'}`}>
-                      {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' ? 'Sent to QC (Unchecked)' : 'Passed Primary / Inventory Ready'}
+                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                      {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'Sent to QC (Unchecked)' : 'Passed Primary / Inventory Ready'}
                     </span>
                   </div>
                 </div>
@@ -472,10 +480,11 @@ const PrimaryDashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-10 py-4 bg-amber-500 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-amber-200 hover:bg-slate-900 transition-all active:scale-95 flex items-center gap-3"
+                  disabled={isSubmitting}
+                  className="px-10 py-4 bg-amber-500 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-amber-200 hover:bg-slate-900 transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ArrowRight size={16} />
-                  Send to Stores
+                  {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : <ArrowRight size={16} />}
+                  {isSubmitting ? 'Processing...' : 'Send to Stores'}
                 </button>
               </div>
             </form>
