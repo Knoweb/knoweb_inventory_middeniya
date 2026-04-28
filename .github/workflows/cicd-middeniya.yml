@@ -101,6 +101,8 @@ jobs:
           username: ${{ secrets.DO_SSH_USER }}
           key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
           port: ${{ secrets.DO_SSH_PORT || 22 }}
+          timeout: 40m
+          command_timeout: 40m
           script: |
             set -e
             cd ${{ secrets.DO_APP_PATH }}
