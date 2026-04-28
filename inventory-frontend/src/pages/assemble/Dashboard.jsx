@@ -57,8 +57,8 @@ const AssembleDashboard = () => {
         const isCurrentAssemble = b.wipStatus === 'ASSEMBLE' || b.wipStatus === 'WIP_ASSEMBLE' || b.currentStage === 'ASSEMBLE' || b.status === 'WIP_ASSEMBLE';
         if (isCurrentAssemble) return false;
 
-        // Filter by lastStage attribute
-        if (b.manufacturingAttributes?.lastStage === 'ASSEMBLE') return true;
+        // Filter by assembleCompleted flag (Persistent)
+        if (b.manufacturingAttributes?.assembleCompleted === true) return true;
         
         // Fallback for items sent to QC
         const isFromAssembleQC = b.wipStatus === 'REWORK' && (
@@ -114,6 +114,7 @@ const AssembleDashboard = () => {
             quantity: validQty,
             assembleScrap: 0,
             lastStage: 'ASSEMBLE',
+            assembleCompleted: true,
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_PRIMARY'
@@ -137,6 +138,7 @@ const AssembleDashboard = () => {
             quantity: scrap,
             batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
             lastStage: 'ASSEMBLE',
+            assembleCompleted: true,
             isRecovered: true
           }
         };
@@ -152,7 +154,8 @@ const AssembleDashboard = () => {
             quantity: validQty,
             assembleScrap: scrap,
             scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
-            lastStage: 'ASSEMBLE'
+            lastStage: 'ASSEMBLE',
+            assembleCompleted: true
           }
         };
         

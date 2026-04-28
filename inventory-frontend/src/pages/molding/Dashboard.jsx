@@ -162,10 +162,10 @@ const MoldingDashboard = () => {
         const isCurrentMolding = b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING' || b.currentStage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING';
         if (isCurrentMolding) return false;
         
-        // Filter by lastStage attribute we now set during advance
-        if (b.manufacturingAttributes?.lastStage === 'MOLDING') return true;
+        // Filter by moldingCompleted flag (Persistent)
+        if (b.manufacturingAttributes?.moldingCompleted === true) return true;
 
-        // Fallback for items sent to QC
+        // Legacy/Fallback for items sent to QC
         const isFromMoldingQC = b.wipStatus === 'REWORK' && (
           b.defectDescription?.toLowerCase().includes('molding') || 
           b.defectDescription?.toLowerCase().includes('[molding]')
@@ -218,6 +218,7 @@ const MoldingDashboard = () => {
             quantity: validQty,
             moldingScrap: 0,
             lastStage: 'MOLDING',
+            moldingCompleted: true,
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_ASSEMBLE'
@@ -241,6 +242,7 @@ const MoldingDashboard = () => {
             quantity: scrap,
             batchNumber: selectedBatch.batchNumber + "-QC",
             lastStage: 'MOLDING',
+            moldingCompleted: true,
             isRecovered: true
           }
         };
@@ -256,7 +258,8 @@ const MoldingDashboard = () => {
             quantity: validQty,
             moldingScrap: scrap,
             scrapRecorded: scrap,
-            lastStage: 'MOLDING'
+            lastStage: 'MOLDING',
+            moldingCompleted: true
           }
         };
         

@@ -57,8 +57,8 @@ const PrimaryDashboard = () => {
         const isCurrentPrimary = b.wipStatus === 'PRIMARY' || b.wipStatus === 'WIP_PRIMARY' || b.currentStage === 'PRIMARY' || b.status === 'WIP_PRIMARY';
         if (isCurrentPrimary) return false;
 
-        // Filter by lastStage attribute
-        if (b.manufacturingAttributes?.lastStage === 'PRIMARY') return true;
+        // Filter by primaryCompleted flag (Persistent)
+        if (b.manufacturingAttributes?.primaryCompleted === true) return true;
 
         // Fallback for items sent to QC
         const isFromPrimaryQC = (b.wipStatus === 'REWORK' || b.wipStatus === 'QC_HOLD' || b.status === 'REWORK' || b.status === 'QC_HOLD') && (
@@ -114,6 +114,7 @@ const PrimaryDashboard = () => {
             quantity: validQty,
             primaryScrap: 0,
             lastStage: 'PRIMARY',
+            primaryCompleted: true,
             notes: 'Good units from split batch'
           },
           wipStatus: 'FINISHED_GOOD'
@@ -141,6 +142,7 @@ const PrimaryDashboard = () => {
             quantity: scrap,
             batchNumber: newBatchNumber,
             lastStage: 'PRIMARY',
+            primaryCompleted: true,
             isRecovered: true
           }
         };
@@ -156,7 +158,8 @@ const PrimaryDashboard = () => {
             quantity: validQty,
             primaryScrap: scrap,
             scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
-            lastStage: 'PRIMARY'
+            lastStage: 'PRIMARY',
+            primaryCompleted: true
           }
         };
 
