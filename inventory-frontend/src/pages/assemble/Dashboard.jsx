@@ -50,22 +50,23 @@ const AssembleDashboard = () => {
       const assembleBatches = (response.data || []).filter(b => b.currentStage === 'ASSEMBLE' || b.stage === 'ASSEMBLE' || b.status === 'WIP_ASSEMBLE' || b.wipStatus === 'WIP_ASSEMBLE');
       setBatches(assembleBatches);
 
-      // Identify history items (items that passed through assemble, typically WIP_PRIMARY, FINISHED_GOOD)
+      // Identify history items (items that passed through assemble)
       const passedBatches = (response.data || []).filter(b => {
-        // Items successfully passed to Primary or Finished Good
-        const isPassed = (b.wipStatus === 'WIP_PRIMARY' || b.wipStatus === 'FINISHED_GOOD' || b.status === 'WIP_PRIMARY' || b.status === 'FINISHED_GOOD');
-        if (isPassed) {
-          return b.wipStatus !== 'ASSEMBLE' && b.wipStatus !== 'WIP_ASSEMBLE' && b.currentStage !== 'ASSEMBLE' && b.status !== 'WIP_ASSEMBLE';
-        }
+        // Exclude current assemble batches
+        const isCurrentAssemble = b.wipStatus === 'ASSEMBLE' || b.wipStatus === 'WIP_ASSEMBLE' || b.currentStage === 'ASSEMBLE' || b.status === 'WIP_ASSEMBLE';
+        if (isCurrentAssemble) return false;
+
+        // Filter by lastStage attribute
+        if (b.manufacturingAttributes?.lastStage === 'ASSEMBLE') return true;
         
-        // Items submitted with QC Unchecked (they become REWORK and go to QC)
-        const isQcUnchecked = b.wipStatus === 'REWORK' && (
+        // Fallback for items sent to QC
+        const isFromAssembleQC = b.wipStatus === 'REWORK' && (
           b.defectDescription?.toLowerCase().includes('assembling') || 
           b.defectDescription?.toLowerCase().includes('[assemble]') ||
           b.defectDescription?.toLowerCase().includes('[assembling]')
         );
         
-        return isQcUnchecked;
+        return isFromAssembleQC;
       });
       setHistoryBatches(passedBatches);
     } catch (error) {
@@ -110,6 +111,7 @@ const AssembleDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
             assembleScrap: 0,
+            lastStage: 'ASSEMBLE',
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_PRIMARY'
@@ -132,6 +134,7 @@ const AssembleDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
             batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+            lastStage: 'ASSEMBLE',
             isRecovered: true
           }
         };
@@ -146,7 +149,8 @@ const AssembleDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
             assembleScrap: scrap,
-            scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap 
+            scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
+            lastStage: 'ASSEMBLE'
           }
         };
         

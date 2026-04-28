@@ -53,19 +53,20 @@ const PrimaryDashboard = () => {
       // Identify history items (items that passed through primary finishing)
       const passedBatches = (response.data || []).filter(b => {
         // Exclude current Primary batches
-        if (b.wipStatus === 'PRIMARY' || b.wipStatus === 'WIP_PRIMARY' || b.currentStage === 'PRIMARY' || b.status === 'WIP_PRIMARY') return false;
+        const isCurrentPrimary = b.wipStatus === 'PRIMARY' || b.wipStatus === 'WIP_PRIMARY' || b.currentStage === 'PRIMARY' || b.status === 'WIP_PRIMARY';
+        if (isCurrentPrimary) return false;
 
-        // Normal passed items
-        if (b.wipStatus === 'FINISHED_GOOD' || b.status === 'FINISHED_GOOD') return true;
+        // Filter by lastStage attribute
+        if (b.manufacturingAttributes?.lastStage === 'PRIMARY') return true;
 
-        // Items submitted with QC Unchecked from Primary
-        if (b.wipStatus === 'QC_HOLD' || b.status === 'QC_HOLD') {
-            return b.defectDescription?.toLowerCase().includes('primary') || 
-                   b.defectDescription?.toLowerCase().includes('[primary]') ||
-                   b.defectDescription?.toLowerCase().includes('finishing');
-        }
+        // Fallback for items sent to QC
+        const isFromPrimaryQC = (b.wipStatus === 'REWORK' || b.wipStatus === 'QC_HOLD') && (
+          b.defectDescription?.toLowerCase().includes('primary') || 
+          b.defectDescription?.toLowerCase().includes('[primary]') ||
+          b.defectDescription?.toLowerCase().includes('finishing')
+        );
         
-        return false;
+        return isFromPrimaryQC;
       });
       setHistoryBatches(passedBatches);
     } catch (error) {
@@ -110,6 +111,7 @@ const PrimaryDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
             primaryScrap: 0,
+            lastStage: 'PRIMARY',
             notes: 'Good units from split batch'
           },
           wipStatus: 'FINISHED_GOOD'
@@ -132,6 +134,7 @@ const PrimaryDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
             batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+            lastStage: 'PRIMARY',
             isRecovered: true
           }
         };
@@ -146,7 +149,8 @@ const PrimaryDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
             primaryScrap: scrap,
-            scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap 
+            scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
+            lastStage: 'PRIMARY'
           }
         };
         

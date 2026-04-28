@@ -155,24 +155,22 @@ const MoldingDashboard = () => {
       const moldingBatches = (response.data || []).filter(b => b.currentStage === 'INJECTION_MOLDING' || b.stage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING' || b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING');
       setBatches(moldingBatches);
 
-      // Identify history items (items that originated or passed through molding, typically WIP_ASSEMBLE, WIP_PRIMARY, FINISHED_GOOD)
+      // Identify history items (items that originated or passed through molding)
       const passedBatches = (response.data || []).filter(b => {
         // Exclude current molding batches
         const isCurrentMolding = b.wipStatus === 'INJECTION_MOLDING' || b.wipStatus === 'WIP_MOLDING' || b.currentStage === 'INJECTION_MOLDING' || b.status === 'WIP_MOLDING';
         if (isCurrentMolding) return false;
         
-        // Normal progressed items
-        const isPassed = (b.wipStatus === 'WIP_ASSEMBLE' || b.wipStatus === 'WIP_PRIMARY' || b.wipStatus === 'FINISHED_GOOD' || b.status === 'WIP_ASSEMBLE' || b.status === 'WIP_PRIMARY' || b.status === 'FINISHED_GOOD');
-        if (isPassed) return true;
-        
-        // Items submitted with QC Unchecked from Molding
-        const isQcUnchecked = b.wipStatus === 'REWORK' && (
+        // Filter by lastStage attribute we now set during advance
+        if (b.manufacturingAttributes?.lastStage === 'MOLDING') return true;
+
+        // Fallback for items sent to QC
+        const isFromMoldingQC = b.wipStatus === 'REWORK' && (
           b.defectDescription?.toLowerCase().includes('molding') || 
-          b.defectDescription?.toLowerCase().includes('[molding]') ||
-          b.defectDescription?.toLowerCase().includes('from molding')
+          b.defectDescription?.toLowerCase().includes('[molding]')
         );
         
-        return isQcUnchecked;
+        return isFromMoldingQC;
       });
       setHistoryBatches(passedBatches);
     } catch (error) {
@@ -217,6 +215,7 @@ const MoldingDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
             moldingScrap: 0,
+            lastStage: 'MOLDING',
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_ASSEMBLE'
@@ -239,6 +238,7 @@ const MoldingDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
             batchNumber: selectedBatch.batchNumber + "-QC",
+            lastStage: 'MOLDING',
             isRecovered: true
           }
         };
@@ -253,7 +253,8 @@ const MoldingDashboard = () => {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
             moldingScrap: scrap,
-            scrapRecorded: scrap 
+            scrapRecorded: scrap,
+            lastStage: 'MOLDING'
           }
         };
         
