@@ -169,8 +169,8 @@ const QCDashboard = () => {
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Decision</th>
-                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">QC Grade</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">From</th>
                   <th className="px-6 py-4 text-right font-semibold text-gray-600 uppercase text-xs tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -178,10 +178,18 @@ const QCDashboard = () => {
                 {completedInspections.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || `PO-${item.id}`}</td>
-                    <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium">{item.materialCode || item.itemName || 'Item'}</span></td>
+                    <td className="px-6 py-4">
+                      <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider border border-indigo-100">
+                        {item.itemName || item.materialCode || 'WIP ITEM'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4"><span className={`text-xs font-bold uppercase px-3 py-1 rounded ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}</span></td>
-                    <td className="px-6 py-4 font-semibold text-gray-700">{item.qualityGrade || 'N/A'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 font-medium italic">"{item.remarks || item.defectDescription || 'N/A'}"</td>
+                    <td className="px-6 py-4">
+                      <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">
+                        {item.reason || item.defectDescription || 'Production'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => confirmDelete(item)}
@@ -208,7 +216,8 @@ const QCDashboard = () => {
               <tr>
                 <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
                 <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item Received</th>
-                <th className="px-6 py-4 font-bold text-red-600 uppercase text-xs tracking-wider flex items-center gap-1.5"><AlertTriangle className="w-4 h-4"/> Quantity Damaged</th>
+                <th className="px-6 py-4 font-bold text-red-600 uppercase text-xs tracking-wider flex items-center gap-1.5"><AlertTriangle className="w-4 h-4"/> Qty</th>
+                <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">From</th>
                 <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
                 <th className="px-6 py-4 text-right font-semibold text-gray-600 uppercase text-xs tracking-wider">Action / Decide</th>
               </tr>
@@ -217,9 +226,18 @@ const QCDashboard = () => {
               {inspections.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
                   <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || item.manufacturingAttributes?.poNumber || `PO-${item.id}`}</td>
-                  <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium shadow-sm">{item.materialCode || item.itemName || item.manufacturingAttributes?.itemName || 'WIP-ITEM'}</span></td>
-                  <td className="px-6 py-4 font-bold text-red-500 text-lg">{item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || item.notes || item.reason || 'Pending Inspection'}</td>
+                  <td className="px-6 py-4">
+                    <span className="bg-white border border-indigo-200 text-indigo-700 px-2.5 py-1 rounded text-xs font-black uppercase tracking-wider shadow-sm">
+                      {item.itemName || item.manufacturingAttributes?.itemName || item.materialCode || 'WIP-ITEM'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-black text-red-500 text-lg">{item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0}</td>
+                  <td className="px-6 py-4">
+                    <span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">
+                      {item.reason || item.notes || 'Production'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 font-medium italic">Pending Inspection</td>
                   <td className="px-6 py-4 flex gap-2 justify-end">
                     <button onClick={() => openDecisionModal(item, "SCRAP")} className="bg-white text-red-600 border border-red-200 px-3 py-1.5 flex items-center gap-1.5 rounded hover:bg-red-50 text-sm font-medium transition-colors shadow-sm">
                       <Trash2 className="w-4 h-4" /> Scrap
