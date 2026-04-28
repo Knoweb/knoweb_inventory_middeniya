@@ -38,9 +38,20 @@ public class ManufacturingFeatureService {
         log.info("Checking if stock deduction is needed for product: {}, Type: {}, WIP Status: {}", 
             manufacturingProduct.getProductId(), manufacturingProduct.getProductType(), manufacturingProduct.getWipStatus());
 
-        if ("WIP".equals(manufacturingProduct.getProductType()) || 
-            "WIP_MOLDING".equals(manufacturingProduct.getWipStatus()) ||
-            "MOLDING".equals(manufacturingProduct.getProductType())) {
+        // Check if this is a recovered/split batch to avoid double-deduction
+        boolean isRecovered = false;
+        if (manufacturingProduct.getManufacturingAttributes() != null && 
+            manufacturingProduct.getManufacturingAttributes().get("isRecovered") != null) {
+            Object recoveredFlag = manufacturingProduct.getManufacturingAttributes().get("isRecovered");
+            if (recoveredFlag instanceof Boolean) {
+                isRecovered = (Boolean) recoveredFlag;
+            } else if (recoveredFlag instanceof String) {
+                isRecovered = Boolean.parseBoolean((String) recoveredFlag);
+            }
+        }
+
+        if (!isRecovered && ("WIP_MOLDING".equals(manufacturingProduct.getWipStatus()) || 
+            "MOLDING".equals(manufacturingProduct.getProductType()))) {
             
             try {
                 log.info("Attempting to deduct stock from inventory for product ID: {} with quantity: {}", 
