@@ -22,9 +22,11 @@ const QCDashboard = () => {
   const fetchPendingInspections = async () => {
     setLoading(true);
 
+    const orgId = user?.orgId;
+
     // 1. Fetch active pending inspections
     try {
-      const pendingRes = await manufacturingService.getPendingInspection();
+      const pendingRes = await manufacturingService.getPendingInspection(orgId);
       setInspections(Array.isArray(pendingRes.data) ? pendingRes.data : []);
     } catch (err) {
       console.error("Failed to fetch pending inspections:", err);
@@ -33,7 +35,7 @@ const QCDashboard = () => {
 
     // 2. Fetch history (passed/failed)
     try {
-      const allRes = await manufacturingService.getHistoryInspection();
+      const allRes = await manufacturingService.getHistoryInspection(orgId);
       const completed = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.content || []);
       setCompletedInspections(completed);
     } catch (err) {
@@ -166,8 +168,10 @@ const QCDashboard = () => {
             <table className="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
               <thead className="bg-slate-100 text-left border-b border-slate-200">
                 <tr>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Date</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Quantity</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Decision</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">QC Grade</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
@@ -177,11 +181,17 @@ const QCDashboard = () => {
               <tbody>
                 {completedInspections.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
+                    <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
+                      {item.inspectionDate ? new Date(item.inspectionDate).toLocaleString() : 'N/A'}
+                    </td>
                     <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || `PO-${item.id}`}</td>
-                    <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium">{item.materialCode || item.itemName || 'Item'}</span></td>
+                    <td className="px-6 py-4"><span className="bg-white border border-gray-200 text-gray-800 px-2.5 py-1 rounded text-sm font-medium">{item.materialCode || item.itemName || item.manufacturingAttributes?.itemName || 'Item'}</span></td>
+                    <td className={`px-6 py-4 font-bold ${item.inspectionStatus === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
+                      {item.defectCount || item.manufacturingAttributes?.quantityDamaged || 0}
+                    </td>
                     <td className="px-6 py-4"><span className={`text-xs font-bold uppercase px-3 py-1 rounded ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}</span></td>
                     <td className="px-6 py-4 font-semibold text-gray-700">{item.qualityGrade || 'N/A'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{item.defectDescription || item.remarks || 'N/A'}</td>
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => confirmDelete(item)}
