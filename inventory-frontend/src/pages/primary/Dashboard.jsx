@@ -4,6 +4,7 @@ import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
+
 const PrimaryDashboard = () => {
   const { user } = useAuth();
   const { showToast } = useNotification();
@@ -15,7 +16,7 @@ const PrimaryDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Modal states
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -25,7 +26,7 @@ const PrimaryDashboard = () => {
     remarks: ''
   });
 
-    const handleDeleteBatch = (e, id) => {
+  const handleDeleteBatch = (e, id) => {
     e.stopPropagation();
     setBatchToDelete(id);
   };
@@ -62,11 +63,11 @@ const PrimaryDashboard = () => {
 
         // Fallback for items sent to QC
         const isFromPrimaryQC = (b.wipStatus === 'REWORK' || b.wipStatus === 'QC_HOLD' || b.status === 'REWORK' || b.status === 'QC_HOLD') && (
-          b.defectDescription?.toLowerCase().includes('primary') || 
+          b.defectDescription?.toLowerCase().includes('primary') ||
           b.defectDescription?.toLowerCase().includes('[primary]') ||
           b.defectDescription?.toLowerCase().includes('finishing')
         );
-        
+
         return isFromPrimaryQC;
       });
       setHistoryBatches(passedBatches);
@@ -105,7 +106,7 @@ const PrimaryDashboard = () => {
 
       if (!formData.qualityCheckPassed && scrap > 0 && validQty > 0) {
         // SCENARIO: Split Batch - Good items go to Stores, Scrap items go to QC
-        
+
         // 1. Advance the Good part to Finished Goods
         const goodBatch = {
           ...selectedBatch,
@@ -145,7 +146,7 @@ const PrimaryDashboard = () => {
           }
         };
         await manufacturingService.create(qcBatchPayload);
-        
+
         showToast(`${validQty} items sent to Stores, ${scrap} items sent to QC for inspection.`, 'success');
       } else {
         // SCENARIO: Standard update
@@ -159,11 +160,11 @@ const PrimaryDashboard = () => {
             lastStage: 'PRIMARY'
           }
         };
-        
+
         await manufacturingService.update(selectedBatch.id, updatedBatch);
-        
+
         const newStatus = formData.qualityCheckPassed ? 'FINISHED_GOOD' : 'QC_HOLD';
-        
+
         if (newStatus === 'QC_HOLD') {
           const qcBatch = {
             ...updatedBatch,
@@ -176,9 +177,9 @@ const PrimaryDashboard = () => {
         } else {
           await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
         }
-        
-        showToast(formData.qualityCheckPassed 
-          ? `Batch successfully finished and moved to Inventory with ${validQty} units!` 
+
+        showToast(formData.qualityCheckPassed
+          ? `Batch successfully finished and moved to Inventory with ${validQty} units!`
           : `Batch sent to QC Dashboard for inspection.`, 'success');
       }
       showToast(`Batch successfully finished and moved to Inventory with ${validQty} units!`, 'success');
@@ -229,27 +230,25 @@ const PrimaryDashboard = () => {
           <div className="flex space-x-2 bg-slate-100/80 p-1.5 rounded-2xl w-full max-w-xs border border-slate-200/60">
             <button
               onClick={() => setActiveTab('active')}
-              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${
-                activeTab === 'active'
+              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${activeTab === 'active'
                   ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
                   : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
-              }`}
+                }`}
             >
               Active
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${
-                activeTab === 'history'
+              className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${activeTab === 'history'
                   ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
                   : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
-              }`}
+                }`}
             >
               History
             </button>
           </div>
         </div>
-        
+
         {activeTab === 'history' ? (
           historyBatches.length === 0 ? (
             <div className="py-20 flex flex-col items-center justify-center text-slate-300 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
@@ -259,14 +258,13 @@ const PrimaryDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {historyBatches.map((batch, idx) => (
-                <div 
-                  key={batch.id || idx} 
+                <div
+                  key={batch.id || idx}
                   onClick={() => setViewHistoryBatch(batch)}
-                  className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${
-                    batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD'
+                  className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD'
                       ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
                       : 'bg-slate-50 border-slate-100 hover:border-amber-200'
-                  }`}
+                    }`}
                 >
                   <div className="flex justify-between items-start mb-4">
                     {batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? (
@@ -278,7 +276,7 @@ const PrimaryDashboard = () => {
                         {batch.status || batch.wipStatus || 'Sent to Stores'}
                       </div>
                     )}
-                    <button 
+                    <button
                       onClick={(e) => handleDeleteBatch(e, batch.id)}
                       className="p-1.5 hover:bg-red-100/80 rounded-full text-slate-400 hover:text-red-500 transition-colors z-10"
                       title="Delete Batch from History"
@@ -292,7 +290,7 @@ const PrimaryDashboard = () => {
                   <p className={`text-sm font-semibold mb-4 ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'text-rose-600/80' : 'text-slate-500'}`}>
                     {batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}
                   </p>
-                  
+
                   <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'border-rose-100/50' : 'border-slate-200'}`}>
                     <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? 'text-rose-600' : 'text-amber-600'}`}>
                       View Details
@@ -323,7 +321,7 @@ const PrimaryDashboard = () => {
                   </div>
                   <span className={`text-[10px] font-black uppercase tracking-widest ${batch.qualityGrade === 'B' ? 'text-amber-500 mt-4' : 'text-slate-400'}`}>Qty: {batch.manufacturingAttributes?.quantity || batch.quantity || 0}</span>
                 </div>
-                
+
                 {/* Fixed the escaping issue securely for the batch number display */}
                 <h3 className="text-xl font-bold text-slate-800 mb-1 relative z-0">{batch.manufacturingAttributes?.batchNumber || batch.batchNumber || `BATCH-${batch.id}`}</h3>
                 <p className="text-sm font-semibold text-slate-500 mb-2 relative z-0">{batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}</p>
@@ -331,9 +329,9 @@ const PrimaryDashboard = () => {
                   <Clock size={12} />
                   {batch.wipStartDate ? new Date(batch.wipStartDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                 </p>
-                
+
                 <div className="mt-auto relative z-0">
-                  <button 
+                  <button
                     onClick={() => handleOpenAdvance(batch)}
                     className="w-full py-4 bg-slate-900 text-white rounded-2xl shadow-lg shadow-slate-200 hover:bg-amber-500 text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 group-hover:scale-[1.02] active:scale-95"
                   >
@@ -364,7 +362,7 @@ const PrimaryDashboard = () => {
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Batch Number / Work Order</span>
                 <span className="text-lg font-black text-slate-800">{viewHistoryBatch.manufacturingAttributes?.batchNumber || viewHistoryBatch.batchNumber || viewHistoryBatch.workOrderNumber || `BATCH-${viewHistoryBatch.id}`}</span>
               </div>
-              
+
               <div className="flex flex-col mb-4">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Product Data</span>
                 <span className="text-sm font-bold text-slate-600 bg-slate-50 px-4 py-3 rounded-xl border border-slate-100 block">{viewHistoryBatch.manufacturingAttributes?.itemName || viewHistoryBatch.itemName || 'Material Item'}</span>
@@ -384,7 +382,7 @@ const PrimaryDashboard = () => {
                 </div>
               </div>
 
-<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
+              <div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
                     {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
@@ -431,7 +429,7 @@ const PrimaryDashboard = () => {
                     min="1"
                     className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-amber-50 focus:border-amber-400 transition-all"
                     value={formData.processedQuantity}
-                    onChange={(e) => setFormData({...formData, processedQuantity: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, processedQuantity: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -442,7 +440,7 @@ const PrimaryDashboard = () => {
                     min="0"
                     className="w-full px-4 py-3.5 bg-rose-50/50 border border-rose-100 rounded-xl text-sm font-bold text-rose-700 outline-none focus:ring-4 focus:ring-rose-50 focus:border-rose-400 transition-all"
                     value={formData.scrapQuantity}
-                    onChange={(e) => setFormData({...formData, scrapQuantity: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, scrapQuantity: e.target.value })}
                   />
                 </div>
               </div>
@@ -455,7 +453,7 @@ const PrimaryDashboard = () => {
                 <input
                   type="checkbox"
                   checked={formData.qualityCheckPassed}
-                  onChange={(e) => setFormData({...formData, qualityCheckPassed: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, qualityCheckPassed: e.target.checked })}
                   className="w-5 h-5 accent-amber-600 rounded bg-white"
                 />
               </div>
@@ -466,7 +464,7 @@ const PrimaryDashboard = () => {
                   className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-amber-50 focus:border-amber-400 transition-all resize-none min-h-[100px]"
                   placeholder="Enter any notes about this finishing run..."
                   value={formData.remarks}
-                  onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                 ></textarea>
               </div>
 
@@ -505,7 +503,7 @@ const PrimaryDashboard = () => {
                 Are you sure you want to delete this batch from history? This action cannot be undone.
               </p>
             </div>
-            
+
             <div className="flex gap-4 w-full mt-8">
               <button
                 onClick={() => setBatchToDelete(null)}
