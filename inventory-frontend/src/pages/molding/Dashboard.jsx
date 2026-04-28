@@ -209,7 +209,9 @@ const MoldingDashboard = () => {
 
       if (!formData.qualityCheckPassed && scrap > 0 && validQty > 0) {
         // SCENARIO: Split Batch - Good items go to Assembly, Scrap items go to QC
-        
+        const baseBatchNumber = selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber || selectedBatch.workOrderNumber || `BATCH-${selectedBatch.id}`;
+        const newBatchNumber = baseBatchNumber.includes('-QC') ? baseBatchNumber : `${baseBatchNumber}-QC`;
+
         // 1. Advance the Good part to Assembly
         const goodBatch = {
           ...selectedBatch,
@@ -232,7 +234,7 @@ const MoldingDashboard = () => {
           productType: 'WIP',
           wipStatus: 'REWORK',
           workOrderNumber: selectedBatch.workOrderNumber,
-          batchNumber: selectedBatch.batchNumber + "-QC",
+          batchNumber: `${baseBatchNumber}-QC`,
           orgId: user?.orgId,
           inspectionStatus: 'PENDING',
           defectDescription: `[Molding] ${formData.remarks || 'Flagged for Inspection'}`,
@@ -240,7 +242,7 @@ const MoldingDashboard = () => {
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
-            batchNumber: selectedBatch.batchNumber + "-QC",
+            batchNumber: `${baseBatchNumber}-QC`,
             lastStage: 'MOLDING',
             moldingCompleted: true,
             isRecovered: true

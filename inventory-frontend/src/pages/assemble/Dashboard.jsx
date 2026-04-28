@@ -105,7 +105,9 @@ const AssembleDashboard = () => {
 
       if (!formData.qualityCheckPassed && scrap > 0 && validQty > 0) {
         // SCENARIO: Split Batch - Good items go to Primary, Scrap items go to QC
-        
+        const baseBatchNumber = selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber || selectedBatch.workOrderNumber || `BATCH-${selectedBatch.id}`;
+        const newBatchNumber = baseBatchNumber.includes('-QC') ? baseBatchNumber : `${baseBatchNumber}-QC`;
+
         // 1. Advance the Good part to Primary
         const goodBatch = {
           ...selectedBatch,
@@ -128,7 +130,7 @@ const AssembleDashboard = () => {
           productType: 'WIP',
           wipStatus: 'REWORK',
           workOrderNumber: selectedBatch.workOrderNumber,
-          batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+          batchNumber: newBatchNumber,
           orgId: user?.orgId,
           inspectionStatus: 'PENDING',
           defectDescription: `[Assembling] ${formData.remarks || 'Flagged for Inspection'}`,
@@ -136,7 +138,7 @@ const AssembleDashboard = () => {
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
-            batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+            batchNumber: newBatchNumber,
             lastStage: 'ASSEMBLE',
             assembleCompleted: true,
             isRecovered: true
