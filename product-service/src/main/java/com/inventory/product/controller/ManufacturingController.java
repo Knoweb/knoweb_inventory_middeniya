@@ -194,9 +194,8 @@ public class ManufacturingController {
      * GET /api/manufacturing/inspection/pending
      */
     @GetMapping("/inspection/pending")
-    public ResponseEntity<List<ManufacturingProduct>> getPendingInspection(
-            @RequestParam(required = false) Long orgId) {
-        return ResponseEntity.ok(manufacturingFeatureService.getPendingInspection(orgId));
+    public ResponseEntity<List<ManufacturingProduct>> getPendingInspection() {
+        return ResponseEntity.ok(manufacturingFeatureService.getPendingInspection());
     }
 
     /**
@@ -204,9 +203,8 @@ public class ManufacturingController {
      * GET /api/manufacturing/inspection/history
      */
     @GetMapping("/inspection/history")
-    public ResponseEntity<List<ManufacturingProduct>> getHistoryInspection(
-            @RequestParam(required = false) Long orgId) {
-        return ResponseEntity.ok(manufacturingFeatureService.getCompletedInspections(orgId));
+    public ResponseEntity<List<ManufacturingProduct>> getHistoryInspection() {
+        return ResponseEntity.ok(manufacturingFeatureService.getCompletedInspections());
     }
     
     /**
@@ -219,12 +217,11 @@ public class ManufacturingController {
             @RequestBody Map<String, Object> inspectionData) {
         String status = (String) inspectionData.get("status");
         String grade = (String) inspectionData.get("grade");
-        String remarks = (String) inspectionData.get("remarks");
         Integer defectCount = inspectionData.get("defectCount") != null 
             ? ((Number) inspectionData.get("defectCount")).intValue() 
             : null;
         
-        return ResponseEntity.ok(manufacturingFeatureService.updateInspection(id, status, grade, defectCount, remarks));
+        return ResponseEntity.ok(manufacturingFeatureService.updateInspection(id, status, grade, defectCount));
     }
     
     /**

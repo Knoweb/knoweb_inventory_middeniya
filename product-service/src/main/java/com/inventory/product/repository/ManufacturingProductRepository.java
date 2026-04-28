@@ -55,11 +55,11 @@ public interface ManufacturingProductRepository extends JpaRepository<Manufactur
     
     List<ManufacturingProduct> findByReworkRequiredTrue();
     
-    @Query("SELECT m FROM ManufacturingProduct m WHERE m.inspectionStatus = 'PENDING' AND (:orgId IS NULL OR m.orgId = :orgId)")
-    List<ManufacturingProduct> findPendingInspection(@Param("orgId") Long orgId);
+    @Query("SELECT m FROM ManufacturingProduct m WHERE m.inspectionStatus = 'PENDING'")
+    List<ManufacturingProduct> findPendingInspection();
 
-    @Query("SELECT m FROM ManufacturingProduct m WHERE m.inspectionStatus IN ('PASSED', 'FAILED') AND (:orgId IS NULL OR m.orgId = :orgId) ORDER BY m.inspectionDate DESC")
-    List<ManufacturingProduct> findCompletedInspections(@Param("orgId") Long orgId);
+    @Query("SELECT m FROM ManufacturingProduct m WHERE m.inspectionStatus IN ('PASSED', 'FAILED') ORDER BY m.inspectionDate DESC")
+    List<ManufacturingProduct> findCompletedInspections();
 
     @Query("SELECT m FROM ManufacturingProduct m WHERE m.reworkCount > :maxRework")
     List<ManufacturingProduct> findExcessiveRework(@Param("maxRework") Integer maxRework);

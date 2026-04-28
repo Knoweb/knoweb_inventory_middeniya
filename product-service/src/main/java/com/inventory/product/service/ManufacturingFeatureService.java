@@ -287,22 +287,22 @@ public class ManufacturingFeatureService {
     /**
      * Get pending inspection items
      */
-    public List<ManufacturingProduct> getPendingInspection(Long orgId) {
-        return manufacturingProductRepository.findPendingInspection(orgId);
+    public List<ManufacturingProduct> getPendingInspection() {
+        return manufacturingProductRepository.findPendingInspection();
     }
     
     /**
      * Get completed inspection items
      */
-    public List<ManufacturingProduct> getCompletedInspections(Long orgId) {
-        return manufacturingProductRepository.findCompletedInspections(orgId);
+    public List<ManufacturingProduct> getCompletedInspections() {
+        return manufacturingProductRepository.findCompletedInspections();
     }
     
     /**
      * Update inspection result
      */
     public ManufacturingProduct updateInspection(Long id, String inspectionStatus, 
-                                                 String qualityGrade, Integer defectCount, String remarks) {
+                                                 String qualityGrade, Integer defectCount) {
         ManufacturingProduct product = manufacturingProductRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Manufacturing product not found"));
         
@@ -310,7 +310,6 @@ public class ManufacturingFeatureService {
         product.setQualityGrade(qualityGrade);
         product.setInspectionDate(LocalDateTime.now());
         product.setDefectCount(defectCount);
-        product.setDefectDescription(remarks);
         
         if ("FAILED".equals(inspectionStatus) && defectCount != null && defectCount > 0) {
             product.setReworkRequired(true);
