@@ -98,36 +98,77 @@ const AssembleDashboard = () => {
     try {
       const processed = parseInt(formData.processedQuantity) || 0;
       const scrap = parseInt(formData.scrapQuantity) || 0;
-      const validQty = Math.max(0, processed - scrap); // Update balance
+      const validQty = Math.max(0, processed - scrap); // Good units
 
-      // Update the backend entity quantity directly before status change
-      const updatedBatch = {
-        ...selectedBatch,
-        manufacturingAttributes: {
-          ...(selectedBatch.manufacturingAttributes || {}),
-          quantity: validQty,
-          assembleScrap: scrap,
-          scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap // accumulate total scrap
-        }
-      };
-      
-      await manufacturingService.update(selectedBatch.id, updatedBatch);
-      
-      const newStatus = formData.qualityCheckPassed ? 'WIP_PRIMARY' : 'REWORK';
-      
-      // If it's rework, flag it as pending inspection so it shows in QC
-      if (newStatus === 'REWORK') {
-        const qcBatch = {
-          ...updatedBatch,
+      if (!formData.qualityCheckPassed && scrap > 0 && validQty > 0) {
+        // SCENARIO: Split Batch - Good items go to Primary, Scrap items go to QC
+        
+        // 1. Advance the Good part to Primary
+        const goodBatch = {
+          ...selectedBatch,
+          manufacturingAttributes: {
+            ...(selectedBatch.manufacturingAttributes || {}),
+            quantity: validQty,
+            assembleScrap: 0,
+            notes: 'Good units from split batch'
+          },
+          wipStatus: 'WIP_PRIMARY'
+        };
+        await manufacturingService.update(selectedBatch.id, goodBatch);
+        await manufacturingService.updateWipStatus(selectedBatch.id, 'WIP_PRIMARY');
+
+        // 2. Create a NEW batch for the items that need QC
+        const qcBatchPayload = {
+          productId: selectedBatch.productId,
+          productType: 'WIP',
+          wipStatus: 'REWORK',
+          workOrderNumber: selectedBatch.workOrderNumber,
+          batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+          orgId: user?.orgId,
           inspectionStatus: 'PENDING',
+          defectDescription: `[Assembling] ${formData.remarks || 'Flagged for Inspection'}`,
+          defectCount: scrap,
+          manufacturingAttributes: {
+            ...(selectedBatch.manufacturingAttributes || {}),
+            quantity: scrap,
+            batchNumber: (selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber) + "-QC",
+            isRecovered: true
+          }
+        };
+        await manufacturingService.create(qcBatchPayload);
+        
+        showToast(`${validQty} items sent to Primary, ${scrap} items sent to QC for inspection.`, 'success');
+      } else {
+        // SCENARIO: Standard update
+        const updatedBatch = {
+          ...selectedBatch,
+          manufacturingAttributes: {
+            ...(selectedBatch.manufacturingAttributes || {}),
+            quantity: validQty,
+            assembleScrap: scrap,
+            scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap 
+          }
+        };
+        
+        await manufacturingService.update(selectedBatch.id, updatedBatch);
+        
+        const newStatus = formData.qualityCheckPassed ? 'WIP_PRIMARY' : 'REWORK';
+        
+        if (newStatus === 'REWORK') {
+          const qcBatch = {
+            ...updatedBatch,
+            inspectionStatus: 'PENDING',
             defectDescription: `[Assembling] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
             defectCount: scrap > 0 ? scrap : processed
           };
           await manufacturingService.update(selectedBatch.id, qcBatch);
         }
         
-      await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
-      showToast(`Batch successfully advanced to Primary Finishing with ${validQty} good pieces!`, 'success');
+        await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
+        showToast(formData.qualityCheckPassed 
+          ? `Batch successfully advanced to Primary Finishing with ${validQty} good pieces!` 
+          : `Batch sent to QC Dashboard for inspection.`, 'success');
+      }
       setShowAdvanceModal(false);
       fetchWipBatches();
     } catch (error) {

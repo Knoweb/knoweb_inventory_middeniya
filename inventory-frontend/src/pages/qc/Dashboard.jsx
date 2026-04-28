@@ -18,6 +18,7 @@ const QCDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [qcQty, setQcQty] = useState(0);
 
   const fetchPendingInspections = async () => {
     setLoading(true);
@@ -52,6 +53,8 @@ const QCDashboard = () => {
     setSelectedItem(item);
     setActionType(type);
     setRemarks('');
+    const damagedQty = item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0;
+    setQcQty(damagedQty);
     setShowModal(true);
   };
 
@@ -66,7 +69,7 @@ const QCDashboard = () => {
       const res = await manufacturingService.updateInspection(selectedItem.id, {
         status: actionType === "SCRAP" ? "FAILED" : "PASSED",
         grade: actionType === "SCRAP" ? "REJECT" : "B",
-        defectCount: selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0,
+        defectCount: actionType === "SCRAP" ? (selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0) : qcQty,
         remarks: remarks,
         action: actionType,
         processedBy: user?.username || 'QC_ADMIN'
@@ -276,14 +279,35 @@ const QCDashboard = () => {
             </div>
             
             <div className="p-6">
-              <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-4 mb-5 flex items-start gap-3">
+               <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-4 mb-5 flex items-start gap-3">
                   <Info className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                   <div>
-                      <p className="text-sm text-gray-800 font-medium">Reviewing <span className="text-red-500 font-bold">{selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0}</span> Damaged Items</p>
+                      <p className="text-sm text-gray-800 font-medium">Reviewing <span className="text-red-500 font-bold">{selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0}</span> Flagged Items</p>
                       <p className="text-xs text-gray-600 mt-1">PO: <strong>{selectedItem.workOrderNumber || selectedItem.manufacturingAttributes?.poNumber || `PO-${selectedItem.id}`}</strong> &nbsp;|&nbsp; Code: <strong>{selectedItem.materialCode || selectedItem.itemName || selectedItem.manufacturingAttributes?.itemName || 'WIP-ITEM'}</strong></p>
-                      <p className="text-xs bg-amber-100/50 text-amber-800 inline-block px-2 py-0.5 rounded mt-2 border border-amber-200">Reason: {selectedItem.defectDescription || selectedItem.notes || selectedItem.reason || 'Pending Inspection'}</p>
                   </div>
               </div>
+
+              {actionType === "REPAIR" && (
+                <div className="mb-5">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Quantity to Recover (Good Items)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={qcQty}
+                      max={selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0}
+                      min="1"
+                      onChange={(e) => setQcQty(parseInt(e.target.value) || 0)}
+                      className="w-full border border-indigo-200 rounded-lg p-3 text-lg font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase">
+                      Items
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1 italic">Max available to recover: {selectedItem.defectCount || selectedItem.manufacturingAttributes?.quantityDamaged || 0}</p>
+                </div>
+              )}
 
               <div className="mb-5">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">

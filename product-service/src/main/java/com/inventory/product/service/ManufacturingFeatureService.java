@@ -318,6 +318,11 @@ public class ManufacturingFeatureService {
             // If approved to return to stock, we clear the rework flag and set as finished good or repaired
             product.setReworkRequired(false);
             
+            // Update the actual quantity in manufacturingAttributes with the recovered quantity
+            if (product.getManufacturingAttributes() != null && defectCount != null) {
+                product.getManufacturingAttributes().put("quantity", defectCount);
+            }
+            
             // Route to the correct next stage based on where it came from
             String desc = product.getDefectDescription();
             if (desc != null && desc.contains("Molding")) {
