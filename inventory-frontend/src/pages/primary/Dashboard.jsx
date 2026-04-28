@@ -4,7 +4,6 @@ import { manufacturingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
-
 const PrimaryDashboard = () => {
   const { user } = useAuth();
   const { showToast } = useNotification();
@@ -231,8 +230,8 @@ const PrimaryDashboard = () => {
             <button
               onClick={() => setActiveTab('active')}
               className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${activeTab === 'active'
-                  ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
-                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+                ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
                 }`}
             >
               Active
@@ -240,8 +239,8 @@ const PrimaryDashboard = () => {
             <button
               onClick={() => setActiveTab('history')}
               className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 ${activeTab === 'history'
-                  ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
-                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+                ? 'bg-white text-amber-600 shadow-md shadow-amber-100'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
                 }`}
             >
               History
@@ -262,8 +261,8 @@ const PrimaryDashboard = () => {
                   key={batch.id || idx}
                   onClick={() => setViewHistoryBatch(batch)}
                   className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD'
-                      ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
-                      : 'bg-slate-50 border-slate-100 hover:border-amber-200'
+                    ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
+                    : 'bg-slate-50 border-slate-100 hover:border-amber-200'
                     }`}
                 >
                   <div className="flex justify-between items-start mb-4">
