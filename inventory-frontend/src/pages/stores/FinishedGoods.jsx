@@ -10,20 +10,20 @@ const FinishedGoods = () => {
   const fetchFinishedGoods = async () => {
     setLoading(true);
     try {
-      const wipRes = await manufacturingService.getWip();
-      const wipData = Array.isArray(wipRes.data) ? wipRes.data : (wipRes.data?.content ?? wipRes.data?.data ?? []);
+      // 1. Fetch ALL manufacturing products for this org to ensure we don't miss SCRAPPED fragments
+      const orgId = user?.orgId;
+      const res = await manufacturingService.getByOrganization(orgId);
+      const allData = Array.isArray(res.data) ? res.data : (res.data?.content || []);
       
-      // AGGREGATION LOGIC: Group ALL records by Base Batch Number first
       const groupedMap = {};
 
-      wipData.forEach(batch => {
+      allData.forEach(batch => {
         const fullNumber = batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`;
         
-        // AGGRESSIVE ROOT IDENTIFICATION: Extract the true origin (e.g., BATCH-PL-3)
-        // This strips -QC segments and any 4-digit timestamp suffixes
+        // Extract root batch number (e.g., BATCH-PL-3)
         const baseNumber = String(fullNumber)
-          .split('-QC')[0]              // Remove anything after -QC
-          .replace(/-[0-9]{4}$/, '')     // Remove 4-digit timestamp suffixes
+          .split('-QC')[0]
+          .replace(/-[0-9]{4}$/, '')
           .trim();
         
         if (!groupedMap[baseNumber]) {
@@ -47,22 +47,27 @@ const FinishedGoods = () => {
         const group = groupedMap[baseNumber];
         const status = batch.wipStatus || batch.status;
 
-        const isFinished = status === 'FINISHED_GOOD' || status === 'SCRAPPED';
-        if (!isFinished) group.isFullyProcessed = false;
+        // Visibility Rule: Hide batch if any fragment is still in progress
+        const isTerminalStatus = status === 'FINISHED_GOOD' || status === 'SCRAPPED';
+        if (!isTerminalStatus) group.isFullyProcessed = false;
         if (status === 'FINISHED_GOOD') group.hasFinishedGoods = true;
 
-        // PRECISION SUMMATION: Only sum quantities based on the fragment's final state
-        // to avoid duplication of inherited counters.
         const fragmentQty = parseInt(batch.quantity || attr.quantity || 0);
         
         if (status === 'FINISHED_GOOD') {
           group.finalOutput += fragmentQty;
         } else if (status === 'SCRAPPED') {
           group.totalScrapped += fragmentQty;
+          
+          // Attribute scrap to the stage where it actually happened
+          const scrapStage = attr.lastStage || attr.sentToQcFrom;
+          if (scrapStage === 'MOLDING') group.moldingScrap += fragmentQty;
+          else if (scrapStage === 'ASSEMBLE') group.assembleScrap += fragmentQty;
+          else if (scrapStage === 'PRIMARY') group.primaryScrap += fragmentQty;
         }
 
-        // For stage-specific scrap, we take the MAX value found in any fragment 
-        // because these counters are cumulative and cloned. Summing them is wrong.
+        // Support for legacy data (where scrap might be in counters but not separate records)
+        // We only add the counter value if it's greater than our current fragment-based sum
         group.moldingScrap = Math.max(group.moldingScrap, parseInt(attr.moldingScrap || 0));
         group.assembleScrap = Math.max(group.assembleScrap, parseInt(attr.assembleScrap || 0));
         group.primaryScrap = Math.max(group.primaryScrap, parseInt(attr.primaryScrap || 0));
@@ -78,9 +83,8 @@ const FinishedGoods = () => {
         .filter(group => group.isFullyProcessed && group.hasFinishedGoods)
         .map(group => ({
           ...group,
-          // Final total scrap is the sum of quantities of all fragments that were SCRAPPED
-          // PLUS any losses recorded during QC (captured in the stage counters)
-          totalScrap: Math.max(group.totalScrapped, group.moldingScrap + group.assembleScrap + group.primaryScrap)
+          // Total Scrap is the sum of stage scraps
+          totalScrap: group.moldingScrap + group.assembleScrap + group.primaryScrap
         }))
         .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
