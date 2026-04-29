@@ -329,19 +329,33 @@ public class ManufacturingFeatureService {
             // If approved to return to stock, we clear the rework flag and set as finished good or repaired
             product.setReworkRequired(false);
             
-            // Update the actual quantity in manufacturingAttributes with the recovered quantity
+            // Update quantities and route based on the originating stage
             if (product.getManufacturingAttributes() != null && defectCount != null) {
+                // Update general quantity
                 product.getManufacturingAttributes().put("quantity", defectCount);
-            }
-            
-            // Route to the correct next stage based on where it came from
-            String desc = product.getDefectDescription();
-            if (desc != null && desc.contains("Molding")) {
-                product.setWipStatus("WIP_ASSEMBLE");
-            } else if (desc != null && desc.contains("Assembling")) {
-                product.setWipStatus("WIP_PRIMARY");
-            } else {
-                product.setWipStatus("FINISHED_GOOD");
+                
+                // Update stage-specific passed quantities to reflect actual recovered amount
+                String lastStage = (String) product.getManufacturingAttributes().get("lastStage");
+                if ("MOLDING".equals(lastStage)) {
+                    product.getManufacturingAttributes().put("moldingPassedQty", defectCount);
+                    product.setWipStatus("WIP_ASSEMBLE");
+                } else if ("ASSEMBLE".equals(lastStage)) {
+                    product.getManufacturingAttributes().put("assemblePassedQty", defectCount);
+                    product.setWipStatus("WIP_PRIMARY");
+                } else if ("PRIMARY".equals(lastStage)) {
+                    product.getManufacturingAttributes().put("primaryPassedQty", defectCount);
+                    product.setWipStatus("FINISHED_GOOD");
+                } else {
+                    // Fallback to legacy string-based routing if lastStage is missing
+                    String desc = product.getDefectDescription();
+                    if (desc != null && desc.contains("Molding")) {
+                        product.setWipStatus("WIP_ASSEMBLE");
+                    } else if (desc != null && desc.contains("Assembling")) {
+                        product.setWipStatus("WIP_PRIMARY");
+                    } else {
+                        product.setWipStatus("FINISHED_GOOD");
+                    }
+                }
             }
         }
         
