@@ -56,8 +56,12 @@ const FinishedGoods = () => {
           group.hasFinishedGoods = true;
         }
 
-        // Accumulate totals ONLY for records that actually have data
-        group.totalQuantity += parseInt(batch.quantity || attr.quantity || 0);
+        // Accumulate Final Output quantity ONLY for records that actually reached stores
+        if (status === 'FINISHED_GOOD') {
+          group.totalQuantity += parseInt(batch.quantity || attr.quantity || 0);
+        }
+        
+        // Accumulate totals for stage metrics
         group.moldingPassed += parseInt(attr.moldingPassedQty || 0);
         group.moldingScrap += parseInt(attr.moldingScrap || 0);
         group.assemblePassed += parseInt(attr.assemblePassedQty || 0);
