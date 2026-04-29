@@ -176,9 +176,10 @@ const QCDashboard = () => {
             <table className="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
               <thead className="bg-slate-100 text-left border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Work Order</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Batch Number</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item</th>
-                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Decision</th>
+                  <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Decision / Qty</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Reason</th>
                   <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">From</th>
                   <th className="px-6 py-4 text-right font-semibold text-gray-600 uppercase text-xs tracking-wider">Actions</th>
@@ -187,13 +188,21 @@ const QCDashboard = () => {
               <tbody>
                 {completedInspections.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || `PO-${item.id}`}</td>
+                    <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || `WO-${item.id}`}</td>
+                    <td className="px-6 py-4 font-bold text-slate-700">{item.manufacturingAttributes?.batchNumber || item.batchNumber || 'N/A'}</td>
                     <td className="px-6 py-4">
                       <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider border border-indigo-100">
-                        {item.itemName || item.materialCode || 'WIP ITEM'}
+                        {item.manufacturingAttributes?.itemName || item.itemName || item.materialCode || 'WIP ITEM'}
                       </span>
                     </td>
-                    <td className="px-6 py-4"><span className={`text-xs font-bold uppercase px-3 py-1 rounded ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}</span></td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full inline-block w-fit ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}
+                        </span>
+                        <span className="text-sm font-black text-slate-800 ml-1">Qty: {item.defectCount || 0}</span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600 font-medium italic">"{item.remarks || item.defectDescription || 'N/A'}"</td>
                     <td className="px-6 py-4">
                       <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">
