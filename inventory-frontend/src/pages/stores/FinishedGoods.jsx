@@ -12,8 +12,72 @@ const FinishedGoods = () => {
     try {
       const wipRes = await manufacturingService.getWip();
       const wipData = Array.isArray(wipRes.data) ? wipRes.data : (wipRes.data?.content ?? wipRes.data?.data ?? []);
-      const finished = wipData.filter(b => b.wipStatus === 'FINISHED_GOOD' || b.status === 'FINISHED_GOOD');
-      setFinishedBatches(finished.reverse());
+      
+      // AGGREGATION LOGIC: Group ALL records by Base Batch Number first
+      const groupedMap = {};
+
+      wipData.forEach(batch => {
+        const fullNumber = batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`;
+        const baseNumber = String(fullNumber).replace(/-QC$/, '').trim();
+        
+        if (!groupedMap[baseNumber]) {
+          groupedMap[baseNumber] = {
+            id: batch.id,
+            baseNumber: baseNumber,
+            itemName: batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component',
+            updatedAt: batch.updatedAt || batch.createdAt,
+            totalQuantity: 0,
+            moldingPassed: 0,
+            moldingScrap: 0,
+            assemblePassed: 0,
+            assembleScrap: 0,
+            primaryPassed: 0,
+            primaryScrap: 0,
+            originalRecords: [],
+            isFullyProcessed: true, // Optimistic start
+            hasFinishedGoods: false
+          };
+        }
+
+        const attr = batch.manufacturingAttributes || {};
+        const group = groupedMap[baseNumber];
+        const status = batch.wipStatus || batch.status;
+
+        // Check if this specific fragment is "Finished"
+        const isFinished = status === 'FINISHED_GOOD' || status === 'SCRAPPED';
+        
+        // If ANY fragment is still in progress, the whole batch is not fully processed
+        if (!isFinished) {
+          group.isFullyProcessed = false;
+        }
+
+        // If at least one fragment reached Finished Good, we mark it as having output
+        if (status === 'FINISHED_GOOD') {
+          group.hasFinishedGoods = true;
+        }
+
+        // Accumulate totals ONLY for records that actually have data
+        group.totalQuantity += parseInt(batch.quantity || attr.quantity || 0);
+        group.moldingPassed += parseInt(attr.moldingPassedQty || 0);
+        group.moldingScrap += parseInt(attr.moldingScrap || 0);
+        group.assemblePassed += parseInt(attr.assemblePassedQty || 0);
+        group.assembleScrap += parseInt(attr.assembleScrap || 0);
+        group.primaryPassed += parseInt(attr.primaryPassedQty || 0);
+        group.primaryScrap += parseInt(attr.primaryScrap || 0);
+        
+        const currentBatchDate = new Date(batch.updatedAt || batch.createdAt);
+        const groupDate = new Date(group.updatedAt);
+        if (currentBatchDate > groupDate) group.updatedAt = batch.updatedAt || batch.createdAt;
+        
+        group.originalRecords.push(batch.id);
+      });
+
+      // FILTERING: Only show groups that are fully processed AND have at least some finished goods
+      const aggregated = Object.values(groupedMap)
+        .filter(group => group.isFullyProcessed && group.hasFinishedGoods)
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+      setFinishedBatches(aggregated);
     } catch (error) {
       console.error('Error fetching finished goods:', error);
     } finally {
@@ -24,8 +88,15 @@ const FinishedGoods = () => {
   const handleDeleteBatch = async () => {
     if (!batchToDelete) return;
     try {
-      await manufacturingService.delete(batchToDelete.id);
-      fetchFinishedGoods(); // Refresh list after deletion
+      // Delete all records associated with this base batch
+      if (batchToDelete.originalRecords && batchToDelete.originalRecords.length > 0) {
+        for (const id of batchToDelete.originalRecords) {
+          await manufacturingService.delete(id);
+        }
+      } else {
+        await manufacturingService.delete(batchToDelete.id);
+      }
+      fetchFinishedGoods();
     } catch (error) {
       console.error('Error deleting batch:', error);
     } finally {
@@ -104,11 +175,8 @@ const FinishedGoods = () => {
                         </button>                        </div>
                     </div>
                     
-                    <h3 className="text-xl font-bold text-slate-800 mb-1">                    {batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`}
-                  </h3>
-                  <p className="text-sm font-extrabold text-indigo-500 mb-6 uppercase tracking-wider">
-                    {batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component'}
-                  </p>
+                    <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.baseNumber}</h3>
+                  <p className="text-sm font-extrabold text-indigo-500 mb-6 uppercase tracking-wider">{batch.itemName}</p>
                   
                   <div className="mt-auto grid grid-cols-3 gap-2">
                     {/* Molding Stats */}
@@ -120,15 +188,11 @@ const FinishedGoods = () => {
                       <div className="space-y-1">
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-slate-500 uppercase">Process Qty</span>
-                          <span className="text-sm font-black text-slate-700">
-                            {parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0) + 
-                             parseInt(batch.manufacturingAttributes?.assembleScrap || 0) + 
-                             parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
-                          </span>
+                          <span className="text-sm font-black text-slate-700">{batch.moldingPassed}</span>
                         </div>
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
-                          <span className="text-sm font-black text-rose-600">{batch.manufacturingAttributes?.moldingScrap || 0}</span>
+                          <span className="text-sm font-black text-rose-600">{batch.moldingScrap}</span>
                         </div>
                       </div>
                     </div>
@@ -142,14 +206,11 @@ const FinishedGoods = () => {
                       <div className="space-y-1">
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-slate-500 uppercase">Process Qty</span>
-                          <span className="text-sm font-black text-slate-700">
-                            {parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0) + 
-                             parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
-                          </span>
+                          <span className="text-sm font-black text-slate-700">{batch.assemblePassed}</span>
                         </div>
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
-                          <span className="text-sm font-black text-rose-600">{batch.manufacturingAttributes?.assembleScrap || 0}</span>
+                          <span className="text-sm font-black text-rose-600">{batch.assembleScrap}</span>
                         </div>
                       </div>
                     </div>
@@ -163,13 +224,13 @@ const FinishedGoods = () => {
                       <div className="space-y-1">
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-indigo-500 uppercase">Final Output</span>
-                          <span className="text-sm font-black text-indigo-700">{batch.quantity || batch.manufacturingAttributes?.quantity || 0}</span>
+                          <span className="text-sm font-black text-indigo-700">{batch.totalQuantity}</span>
                         </div>
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
-                          <span className="text-sm font-black text-rose-600">{batch.manufacturingAttributes?.primaryScrap || 0}</span>
-                          </div>
+                          <span className="text-sm font-black text-rose-600">{batch.primaryScrap}</span>
                         </div>
+                      </div>
                       </div>
                     </div>
                     {/* Summary Footer */}
@@ -179,10 +240,7 @@ const FinishedGoods = () => {
                           Started Qty
                         </span>
                         <span className="text-base font-black text-slate-700">
-                          {parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0) + 
-                           parseInt(batch.manufacturingAttributes?.moldingScrap || 0) + 
-                           parseInt(batch.manufacturingAttributes?.assembleScrap || 0) + 
-                           parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
+                          {batch.moldingPassed + batch.moldingScrap}
                         </span>
                       </div>
                       <div className="w-px h-8 bg-slate-200"></div>
@@ -191,9 +249,7 @@ const FinishedGoods = () => {
                           Total Scrap
                         </span>
                         <span className="text-base font-black text-rose-600">
-                          {parseInt(batch.manufacturingAttributes?.moldingScrap || 0) + 
-                           parseInt(batch.manufacturingAttributes?.assembleScrap || 0) + 
-                           parseInt(batch.manufacturingAttributes?.primaryScrap || 0)}
+                          {batch.moldingScrap + batch.assembleScrap + batch.primaryScrap}
                         </span>
                       </div>
                     </div>

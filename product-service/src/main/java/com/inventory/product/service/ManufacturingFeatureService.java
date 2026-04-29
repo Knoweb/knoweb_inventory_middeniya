@@ -317,24 +317,50 @@ public class ManufacturingFeatureService {
         ManufacturingProduct product = manufacturingProductRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Manufacturing product not found"));
         
+        Integer totalSentToQc = product.getDefectCount();
+        Integer recoveredQty = defectCount;
+        
         product.setInspectionStatus(inspectionStatus);
         product.setQualityGrade(qualityGrade);
         product.setInspectionDate(LocalDateTime.now());
         product.setDefectCount(defectCount);
+
+        // Update Scrap Totals based on what was lost during QC
+        if (product.getManufacturingAttributes() != null) {
+            String lastStage = (String) product.getManufacturingAttributes().get("lastStage");
+            int qcScrap = 0;
+            
+            if ("FAILED".equals(inspectionStatus)) {
+                qcScrap = totalSentToQc != null ? totalSentToQc : 0;
+            } else if ("PASSED".equals(inspectionStatus)) {
+                qcScrap = (totalSentToQc != null ? totalSentToQc : 0) - (recoveredQty != null ? recoveredQty : 0);
+            }
+
+            if (qcScrap > 0) {
+                String scrapKey = "moldingScrap";
+                if ("ASSEMBLE".equals(lastStage)) scrapKey = "assembleScrap";
+                else if ("PRIMARY".equals(lastStage)) scrapKey = "primaryScrap";
+                
+                Object currentVal = product.getManufacturingAttributes().get(scrapKey);
+                int currentScrap = (currentVal instanceof Number) ? ((Number) currentVal).intValue() : 0;
+                product.getManufacturingAttributes().put(scrapKey, currentScrap + qcScrap);
+                
+                // Also update the global scrap counter if it exists
+                Object globalVal = product.getManufacturingAttributes().get("scrapRecorded");
+                int globalScrap = (globalVal instanceof Number) ? ((Number) globalVal).intValue() : 0;
+                product.getManufacturingAttributes().put("scrapRecorded", globalScrap + qcScrap);
+            }
+        }
         
-        if ("FAILED".equals(inspectionStatus) && defectCount != null && defectCount > 0) {
+        if ("FAILED".equals(inspectionStatus)) {
             product.setReworkRequired(true);
             product.setWipStatus("SCRAPPED"); // Mark as completely scrapped
         } else if ("PASSED".equals(inspectionStatus)) {
-            // If approved to return to stock, we clear the rework flag and set as finished good or repaired
             product.setReworkRequired(false);
             
-            // Update quantities and route based on the originating stage
             if (product.getManufacturingAttributes() != null && defectCount != null) {
-                // Update general quantity
                 product.getManufacturingAttributes().put("quantity", defectCount);
                 
-                // Update stage-specific passed quantities to reflect actual recovered amount
                 String lastStage = (String) product.getManufacturingAttributes().get("lastStage");
                 if ("MOLDING".equals(lastStage)) {
                     product.getManufacturingAttributes().put("moldingPassedQty", defectCount);
@@ -346,21 +372,13 @@ public class ManufacturingFeatureService {
                     product.getManufacturingAttributes().put("primaryPassedQty", defectCount);
                     product.setWipStatus("FINISHED_GOOD");
                 } else {
-                    // Fallback to legacy string-based routing if lastStage is missing
                     String desc = product.getDefectDescription();
-                    if (desc != null && desc.contains("Molding")) {
-                        product.setWipStatus("WIP_ASSEMBLE");
-                    } else if (desc != null && desc.contains("Assembling")) {
-                        product.setWipStatus("WIP_PRIMARY");
-                    } else {
-                        product.setWipStatus("FINISHED_GOOD");
-                    }
+                    if (desc != null && desc.contains("Molding")) product.setWipStatus("WIP_ASSEMBLE");
+                    else if (desc != null && desc.contains("Assembling")) product.setWipStatus("WIP_PRIMARY");
+                    else product.setWipStatus("FINISHED_GOOD");
                 }
             }
         }
-        
-        log.info("Updated inspection for product {}: status={}, grade={}, defects={}", 
-            id, inspectionStatus, qualityGrade, defectCount);
         
         return manufacturingProductRepository.save(product);
     }
