@@ -35,17 +35,12 @@ const FinishedGoods = () => {
             itemName: batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component',
             updatedAt: batch.updatedAt || batch.createdAt,
             finalOutput: 0,
-            totalScrapped: 0,
-            moldingScrap: 0,
-            assembleScrap: 0,
-            primaryScrap: 0,
-            originalRecords: [],
+            allFragments: [],
             isFullyProcessed: true,
             hasFinishedGoods: false
           };
         }
 
-        const attr = batch.manufacturingAttributes || {};
         const group = groupedMap[baseNumber];
         const status = batch.wipStatus || batch.status;
 
@@ -54,39 +49,47 @@ const FinishedGoods = () => {
         if (!isTerminalStatus) group.isFullyProcessed = false;
         if (status === 'FINISHED_GOOD') group.hasFinishedGoods = true;
 
-        const fragmentQty = parseInt(batch.quantity || attr.quantity || 0);
-        
-        if (status === 'FINISHED_GOOD') {
-          group.finalOutput += fragmentQty;
-        } else if (status === 'SCRAPPED') {
-          group.totalScrapped += fragmentQty;
-          
-          // Attribute scrap to the stage where it actually happened
-          const scrapStage = attr.lastStage || attr.sentToQcFrom;
-          if (scrapStage === 'MOLDING') group.moldingScrap += fragmentQty;
-          else if (scrapStage === 'ASSEMBLE') group.assembleScrap += fragmentQty;
-          else if (scrapStage === 'PRIMARY') group.primaryScrap += fragmentQty;
-        }
+        const fragmentQty = parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0);
+        if (status === 'FINISHED_GOOD') group.finalOutput += fragmentQty;
 
-        // Support for legacy data (where scrap might be in counters but not separate records)
-        // We only add the counter value if it's greater than our current fragment-based sum
-        group.moldingScrap = Math.max(group.moldingScrap, parseInt(attr.moldingScrap || 0));
-        group.assembleScrap = Math.max(group.assembleScrap, parseInt(attr.assembleScrap || 0));
-        group.primaryScrap = Math.max(group.primaryScrap, parseInt(attr.primaryScrap || 0));
+        // Keep all fragments to find the root/oldest one later
+        group.allFragments.push(batch);
         
         const currentBatchDate = new Date(batch.updatedAt || batch.createdAt);
         const groupDate = new Date(group.updatedAt);
         if (currentBatchDate > groupDate) group.updatedAt = batch.updatedAt || batch.createdAt;
-        
-        group.originalRecords.push(batch.id);
       });
 
       const aggregated = Object.values(groupedMap)
         .filter(group => group.hasFinishedGoods) // Only require some finished goods to show up
-        .map(group => ({
-          ...group,
-          totalScrap: group.moldingScrap + group.assembleScrap + group.primaryScrap
-        }))
+        .map(group => {
+          // 1. Find the ROOT record (the one with the smallest ID)
+          const root = [...group.allFragments].sort((a, b) => a.id - b.id)[0];
+          const attr = root.manufacturingAttributes || {};
+          
+          // 2. Initial Started Qty = root qty + any scrap already recorded on it
+          const rootQty = parseInt(root.quantity || attr.quantity || 0);
+          const rootScrap = parseInt(attr.moldingScrap || 0) + parseInt(attr.assembleScrap || 0) + parseInt(attr.primaryScrap || 0);
+          const startedQty = rootQty + rootScrap;
+
+          // 3. Total Scrap = Started - Final Output
+          const totalScrap = startedQty - group.finalOutput;
+
+          // 4. Stage-specific scraps (using Max as best effort for display)
+          const moldingScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.moldingScrap || 0)));
+          const assembleScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.assembleScrap || 0)));
+          const primaryScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.primaryScrap || 0)));
+
+          return {
+            ...group,
+            startedQty,
+            totalScrap,
+            moldingScrap,
+            assembleScrap,
+            primaryScrap,
+            originalRecords: group.allFragments.map(f => f.id)
+          };
+        })
         .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
       setFinishedBatches(aggregated);
@@ -224,7 +227,7 @@ const FinishedGoods = () => {
                         Started Qty
                       </span>
                       <span className="text-base font-black text-slate-700">
-                        {batch.finalOutput + batch.totalScrap}
+                        {batch.startedQty}
                       </span>
                     </div>
                     
