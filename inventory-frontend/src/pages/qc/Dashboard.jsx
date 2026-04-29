@@ -236,7 +236,8 @@ const QCDashboard = () => {
           <table className="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
             <thead className="bg-slate-100 text-left border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">PO Number</th>
+                <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Work Order</th>
+                <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Batch Number</th>
                 <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">Item Received</th>
                 <th className="px-6 py-4 font-bold text-red-600 uppercase text-xs tracking-wider flex items-center gap-1.5"><AlertTriangle className="w-4 h-4"/> Qty</th>
                 <th className="px-6 py-4 font-semibold text-gray-600 uppercase text-xs tracking-wider">From</th>
@@ -247,10 +248,11 @@ const QCDashboard = () => {
             <tbody>
               {inspections.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-100/50 border-b border-gray-100 transition-colors">
-                  <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || item.manufacturingAttributes?.poNumber || `PO-${item.id}`}</td>
+                  <td className="px-6 py-4 font-medium text-gray-700">{item.workOrderNumber || item.manufacturingAttributes?.poNumber || `WO-${item.id}`}</td>
+                  <td className="px-6 py-4 font-bold text-slate-800">{item.manufacturingAttributes?.batchNumber || item.batchNumber || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <span className="bg-white border border-indigo-200 text-indigo-700 px-2.5 py-1 rounded text-xs font-black uppercase tracking-wider shadow-sm">
-                      {item.itemName || item.manufacturingAttributes?.itemName || item.materialCode || 'WIP-ITEM'}
+                      {item.manufacturingAttributes?.itemName || item.itemName || item.materialCode || 'WIP-ITEM'}
                     </span>
                   </td>
                   <td className="px-6 py-4 font-black text-red-500 text-lg">{item.defectCount || item.manufacturingAttributes?.quantityDamaged || item.scrapQuantity || 0}</td>
