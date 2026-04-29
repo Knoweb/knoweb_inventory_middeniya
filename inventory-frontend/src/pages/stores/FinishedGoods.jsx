@@ -127,14 +127,7 @@ const FinishedGoods = () => {
           <p className="text-gray-600 mt-1">Batches Passed from Primary Finishing to Stores.</p>
         </div>
         <button 
-          onClick={() => {
-            setLoading(true);
-            manufacturingService.getWip().then(wipRes => {
-              const wipData = Array.isArray(wipRes.data) ? wipRes.data : (wipRes.data?.content ?? wipRes.data?.data ?? []);
-              const finished = wipData.filter(b => b.wipStatus === 'FINISHED_GOOD' || b.status === 'FINISHED_GOOD');
-              setFinishedBatches(finished.reverse());
-            }).finally(() => setLoading(false));
-          }}
+          onClick={fetchFinishedGoods}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors font-bold text-sm shadow-sm"
         >
           <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
