@@ -13,6 +13,7 @@ jobs:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 3
       matrix:
         service:
           - api-gateway
@@ -75,6 +76,8 @@ jobs:
           provenance: false
           tags: |
             ${{ env.DOCKERHUB_USERNAME }}/${{ matrix.service }}:middeniya
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy-to-digitalocean:
     name: Deploy to DigitalOcean Droplet
