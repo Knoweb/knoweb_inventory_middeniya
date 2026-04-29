@@ -313,32 +313,19 @@ public class ManufacturingFeatureService {
      * Update inspection result
      */
     public ManufacturingProduct updateInspection(Long id, String inspectionStatus, 
-                                                 String qualityGrade, Integer defectCount,
-                                                 String remarks, String processedBy) {
+                                                 String qualityGrade, Integer defectCount) {
         ManufacturingProduct product = manufacturingProductRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Manufacturing product not found"));
         
         Integer totalSentToQc = product.getDefectCount();
         Integer recoveredQty = defectCount;
         
-        // 1. Log the decision on the ORIGINAL record (This becomes the History Record)
         product.setInspectionStatus(inspectionStatus);
         product.setQualityGrade(qualityGrade);
         product.setInspectionDate(LocalDateTime.now());
-        product.setInspectorName(processedBy);
-        product.setDefectDescription(remarks);
-        product.setNotes(remarks);
-        
-        // Audit data for history
-        if (product.getManufacturingAttributes() != null) {
-            product.getManufacturingAttributes().put("qcOriginalQty", totalSentToQc);
-            product.getManufacturingAttributes().put("qcRecoveredQty", recoveredQty);
-            product.getManufacturingAttributes().put("qcScrappedQty", (totalSentToQc != null ? totalSentToQc : 0) - (recoveredQty != null ? recoveredQty : 0));
-            product.getManufacturingAttributes().put("qcProcessedBy", processedBy);
-            product.getManufacturingAttributes().put("qcRemarks", remarks);
-        }
+        product.setDefectCount(defectCount);
 
-        // 2. Update Scrap Totals based on what was lost during QC
+        // Update Scrap Totals based on what was lost during QC
         if (product.getManufacturingAttributes() != null) {
             String lastStage = (String) product.getManufacturingAttributes().get("lastStage");
             int qcScrap = 0;
@@ -358,6 +345,7 @@ public class ManufacturingFeatureService {
                 int currentScrap = (currentVal instanceof Number) ? ((Number) currentVal).intValue() : 0;
                 product.getManufacturingAttributes().put(scrapKey, currentScrap + qcScrap);
                 
+                // Also update the global scrap counter if it exists
                 Object globalVal = product.getManufacturingAttributes().get("scrapRecorded");
                 int globalScrap = (globalVal instanceof Number) ? ((Number) globalVal).intValue() : 0;
                 product.getManufacturingAttributes().put("scrapRecorded", globalScrap + qcScrap);
@@ -365,53 +353,34 @@ public class ManufacturingFeatureService {
         }
         
         if ("FAILED".equals(inspectionStatus)) {
-            product.setWipStatus("SCRAPPED");
             product.setReworkRequired(true);
-            return manufacturingProductRepository.save(product);
-        } else {
-            // "PASSED" Scenario - IMMUTABLE HISTORY FIX:
-            // We keep the current record (ID) as the HISTORY entry and create a NEW record to move forward.
-            
-            // Mark the current record as COMPLETED for QC history purposes
-            product.setWipStatus("QC_COMPLETED"); 
+            product.setWipStatus("SCRAPPED"); // Mark as completely scrapped
+        } else if ("PASSED".equals(inspectionStatus)) {
             product.setReworkRequired(false);
-            manufacturingProductRepository.save(product);
             
-            // Create a NEW record for the recovered items to continue in the production line
-            ManufacturingProduct activeProduct = new ManufacturingProduct();
-            activeProduct.setProductId(product.getProductId());
-            activeProduct.setProductType("WIP");
-            activeProduct.setOrgId(product.getOrgId());
-            activeProduct.setWorkOrderNumber(product.getWorkOrderNumber());
-            activeProduct.setQualityGrade(qualityGrade);
-            activeProduct.setMaterialCode(product.getMaterialCode());
-            activeProduct.setPartNumber(product.getPartNumber());
-            activeProduct.setLotNumber(product.getLotNumber());
-            activeProduct.setWipStartDate(LocalDateTime.now());
-            
-            // Deep copy manufacturing attributes
-            Map<String, Object> newAttrs = new HashMap<>(product.getManufacturingAttributes());
-            newAttrs.put("quantity", recoveredQty);
-            newAttrs.put("isRecovered", false); // It's a clean batch now
-            newAttrs.remove("sentToQcFrom");
-            
-            String lastStage = (String) product.getManufacturingAttributes().get("lastStage");
-            if ("MOLDING".equals(lastStage)) {
-                newAttrs.put("moldingPassedQty", recoveredQty);
-                activeProduct.setWipStatus("WIP_ASSEMBLE");
-            } else if ("ASSEMBLE".equals(lastStage)) {
-                newAttrs.put("assemblePassedQty", recoveredQty);
-                activeProduct.setWipStatus("WIP_PRIMARY");
-            } else if ("PRIMARY".equals(lastStage)) {
-                newAttrs.put("primaryPassedQty", recoveredQty);
-                activeProduct.setWipStatus("FINISHED_GOOD");
-            } else {
-                activeProduct.setWipStatus("FINISHED_GOOD");
+            if (product.getManufacturingAttributes() != null && defectCount != null) {
+                product.getManufacturingAttributes().put("quantity", defectCount);
+                
+                String lastStage = (String) product.getManufacturingAttributes().get("lastStage");
+                if ("MOLDING".equals(lastStage)) {
+                    product.getManufacturingAttributes().put("moldingPassedQty", defectCount);
+                    product.setWipStatus("WIP_ASSEMBLE");
+                } else if ("ASSEMBLE".equals(lastStage)) {
+                    product.getManufacturingAttributes().put("assemblePassedQty", defectCount);
+                    product.setWipStatus("WIP_PRIMARY");
+                } else if ("PRIMARY".equals(lastStage)) {
+                    product.getManufacturingAttributes().put("primaryPassedQty", defectCount);
+                    product.setWipStatus("FINISHED_GOOD");
+                } else {
+                    String desc = product.getDefectDescription();
+                    if (desc != null && desc.contains("Molding")) product.setWipStatus("WIP_ASSEMBLE");
+                    else if (desc != null && desc.contains("Assembling")) product.setWipStatus("WIP_PRIMARY");
+                    else product.setWipStatus("FINISHED_GOOD");
+                }
             }
-            
-            activeProduct.setManufacturingAttributes(newAttrs);
-            return manufacturingProductRepository.save(activeProduct);
         }
+        
+        return manufacturingProductRepository.save(product);
     }
     
     /**
