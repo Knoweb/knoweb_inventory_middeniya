@@ -63,22 +63,41 @@ const FinishedGoods = () => {
       const aggregated = Object.values(groupedMap)
         .filter(group => group.hasFinishedGoods) // Only require some finished goods to show up
         .map(group => {
-          // 1. Find the ROOT record (the one with the smallest ID)
-          const root = [...group.allFragments].sort((a, b) => a.id - b.id)[0];
-          const attr = root.manufacturingAttributes || {};
-          
-          // 2. Initial Started Qty = root qty + any scrap already recorded on it
-          const rootQty = parseInt(root.quantity || attr.quantity || 0);
-          const rootScrap = parseInt(attr.moldingScrap || 0) + parseInt(attr.assembleScrap || 0) + parseInt(attr.primaryScrap || 0);
-          const startedQty = rootQty + rootScrap;
+          // 1. Calculate Started Qty by summing quantities of ALL fragments
+          // This is the most robust way because Started = Sum(Finished + Scrapped + WIP)
+          let startedQty = 0;
+          let totalScrap = 0;
+          let moldingScrap = 0;
+          let assembleScrap = 0;
+          let primaryScrap = 0;
 
-          // 3. Total Scrap = Started - Final Output
-          const totalScrap = startedQty - group.finalOutput;
+          group.allFragments.forEach(f => {
+            const qty = parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
+            const status = f.wipStatus || f.status;
+            const attr = f.manufacturingAttributes || {};
 
-          // 4. Stage-specific scraps (using Max as best effort for display)
-          const moldingScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.moldingScrap || 0)));
-          const assembleScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.assembleScrap || 0)));
-          const primaryScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.primaryScrap || 0)));
+            startedQty += qty;
+
+            if (status === 'SCRAPPED') {
+              totalScrap += qty;
+              
+              // Attribute to stage
+              const scrapStage = attr.lastStage || attr.sentToQcFrom;
+              if (scrapStage === 'MOLDING') moldingScrap += qty;
+              else if (scrapStage === 'ASSEMBLE') assembleScrap += qty;
+              else if (scrapStage === 'PRIMARY') primaryScrap += qty;
+            }
+          });
+
+          // Fallback for stage scraps if no SCRAPPED fragments exist (legacy data)
+          if (totalScrap === 0 || (moldingScrap === 0 && assembleScrap === 0 && primaryScrap === 0)) {
+            moldingScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.moldingScrap || 0)));
+            assembleScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.assembleScrap || 0)));
+            primaryScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.primaryScrap || 0)));
+            
+            // Re-sync total scrap if we used legacy fallback
+            if (totalScrap === 0) totalScrap = moldingScrap + assembleScrap + primaryScrap;
+          }
 
           return {
             ...group,
