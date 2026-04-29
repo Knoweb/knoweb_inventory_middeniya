@@ -58,48 +58,38 @@ const FinishedGoods = () => {
       const aggregated = Object.values(groupedMap)
         .filter(group => group.hasFinishedGoods)
         .map(group => {
-          // 1. Identify Leaf Nodes (fragments that are NOT parents of any other fragment in this group)
-          const allIds = new Set(group.allFragments.map(f => f.id));
-          const parentIds = new Set(group.allFragments.map(f => f.parentProductId).filter(id => id != null));
-          
-          // A leaf node is a fragment whose ID is NOT in the parentIds set
-          const leafNodes = group.allFragments.filter(f => !parentIds.has(f.id));
+          // 1. Calculate Final Output (Sum of FINISHED_GOOD quantities)
+          const finalOutput = group.finalOutput;
 
-          // 2. Calculate totals using ONLY leaf nodes
-          let startedQty = 0;
-          let finalOutput = 0;
-          let moldingScrap = 0;
-          let assembleScrap = 0;
-          let primaryScrap = 0;
-
-          leafNodes.forEach(f => {
-            const attr = f.manufacturingAttributes || {};
-            const status = f.wipStatus || f.status;
-            const qty = parseInt(f.quantity || attr.quantity || 0);
-
-            // Output only from Finished fragments
-            if (status === 'FINISHED_GOOD') {
-              finalOutput += qty;
-            }
+          // 2. Calculate Stage-Specific Scrap using the Unified Max-Sum Strategy
+          // This handles both standard counter updates and split-based scraps correctly.
+          const getStageScrap = (stageKey) => {
+            // A. Get max counter value across all fragments (handles cloned/inherited counters)
+            const maxCounter = Math.max(0, ...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.[stageKey.toLowerCase() + 'Scrap'] || 0)));
             
-            // Sum up quantities of leaf nodes to get the total processed items
-            startedQty += qty;
+            // B. Get sum of quantities of fragments explicitly SCRAPPED in this stage
+            const fragmentSum = group.allFragments
+              .filter(f => (f.wipStatus === 'SCRAPPED' || f.status === 'SCRAPPED') && 
+                           (f.manufacturingAttributes?.lastStage === stageKey || f.manufacturingAttributes?.sentToQcFrom === stageKey))
+              .reduce((sum, f) => sum + parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0), 0);
+            
+            // The truth is the maximum of the two (prevents double counting inherited values)
+            return Math.max(maxCounter, fragmentSum);
+          };
 
-            // Stage scraps from leaf nodes (Summing is safe here because we only use leaves)
-            moldingScrap += parseInt(attr.moldingScrap || 0);
-            assembleScrap += parseInt(attr.assembleScrap || 0);
-            primaryScrap += parseInt(attr.primaryScrap || 0);
-          });
+          const moldingScrap = getStageScrap('MOLDING');
+          const assembleScrap = getStageScrap('ASSEMBLE');
+          const primaryScrap = getStageScrap('PRIMARY');
 
+          // 3. Total Scrap = Sum of calculated stage scraps
           const totalScrap = moldingScrap + assembleScrap + primaryScrap;
-          
-          // Double check Mass Balance: If startedQty is less than output+scrap, adjust it
-          // This handles cases where some scrap wasn't turned into a separate fragment
-          const finalStartedQty = Math.max(startedQty, finalOutput + totalScrap);
+
+          // 4. Started Qty = Final Output + Total Scrap (Fundamental Mass Balance)
+          const startedQty = finalOutput + totalScrap;
 
           return {
             ...group,
-            startedQty: finalStartedQty,
+            startedQty,
             finalOutput,
             totalScrap,
             moldingScrap,
