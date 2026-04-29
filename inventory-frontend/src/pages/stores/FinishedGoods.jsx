@@ -18,18 +18,30 @@ const FinishedGoods = () => {
       const allData = Array.isArray(res.data) ? res.data : (res.data?.content || []);
       
       const groupedMap = {};
+      const idToRootMap = {};
+
+      // 1. Build a mapping to find the ultimate root ID for any fragment
+      allData.forEach(batch => {
+        idToRootMap[batch.id] = batch.parentProductId || batch.id;
+      });
+      // Second pass to flatten the tree (simple 2-level flatten is usually enough)
+      allData.forEach(batch => {
+        if (idToRootMap[batch.parentProductId]) {
+          idToRootMap[batch.id] = idToRootMap[batch.parentProductId];
+        }
+      });
 
       allData.forEach(batch => {
-        // Use Work Order as the primary grouping key to catch all split fragments
-        const groupKey = batch.workOrderNumber || batch.batchNumber || `BATCH-${batch.id}`;
-        const baseNumber = String(batch.batchNumber || batch.workOrderNumber || groupKey).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim();
+        const attr = batch.manufacturingAttributes || {};
+        // Group by the ultimate root ID to catch all fragments regardless of name changes
+        const rootId = idToRootMap[batch.id];
         
-        if (!groupedMap[groupKey]) {
-          groupedMap[groupKey] = {
-            id: batch.id,
-            baseNumber: baseNumber,
+        if (!groupedMap[rootId]) {
+          groupedMap[rootId] = {
+            id: rootId,
+            baseNumber: batch.batchNumber || batch.workOrderNumber || `BATCH-${rootId}`,
             workOrder: batch.workOrderNumber,
-            itemName: batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component',
+            itemName: attr.itemName || batch.itemName || 'Finished Component',
             updatedAt: batch.updatedAt || batch.createdAt,
             finalOutput: 0,
             allFragments: [],
@@ -38,14 +50,14 @@ const FinishedGoods = () => {
           };
         }
 
-        const group = groupedMap[groupKey];
+        const group = groupedMap[rootId];
         const status = batch.wipStatus || batch.status;
 
         const isTerminalStatus = status === 'FINISHED_GOOD' || status === 'SCRAPPED';
         if (!isTerminalStatus) group.isFullyProcessed = false;
         if (status === 'FINISHED_GOOD') group.hasFinishedGoods = true;
 
-        const fragmentQty = parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0);
+        const fragmentQty = parseInt(batch.quantity || attr.quantity || 0);
         if (status === 'FINISHED_GOOD') group.finalOutput += fragmentQty;
 
         group.allFragments.push(batch);
