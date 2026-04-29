@@ -59,19 +59,17 @@ const AssembleDashboard = () => {
 
         // Filter by assembleCompleted flag (Persistent)
         if (b.manufacturingAttributes?.assembleCompleted === true) {
+          // Exclude records that were "born" in a later stage (Primary splits)
+          const bornStage = b.manufacturingAttributes?.bornInStage;
+          if (bornStage === 'PRIMARY') return false;
+
           if (b.manufacturingAttributes?.isRecovered === true) {
             return b.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE';
           }
           return true;
         }
         
-        // Fallback for items sent to QC
-        const isFromAssembleQC = b.wipStatus === 'REWORK' && (
-          b.defectDescription?.toLowerCase().includes('assembling') || 
-          b.defectDescription?.toLowerCase().includes('[assemble]') ||
-          b.defectDescription?.toLowerCase().includes('[assembling]') ||
-          b.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE'
-        );
+        const isFromAssembleQC = b.wipStatus === 'REWORK' && b.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE';
         
         return isFromAssembleQC;
       });
@@ -160,7 +158,8 @@ const AssembleDashboard = () => {
             assembleCompleted: true,
             assemblePassedQty: scrap,
             sentToQcFrom: 'ASSEMBLE',
-            isRecovered: true
+            isRecovered: true,
+            bornInStage: 'ASSEMBLE' // Mark origin
           }
         };
         await manufacturingService.create(qcBatchPayload);

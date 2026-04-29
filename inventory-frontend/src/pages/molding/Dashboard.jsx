@@ -164,21 +164,18 @@ const MoldingDashboard = () => {
         
         // Filter by moldingCompleted flag (Persistent)
         if (b.manufacturingAttributes?.moldingCompleted === true) {
-          // IMPORTANT: If this is a split/recovered record, only show it in Molding history 
-          // if it was actually split/flagged FROM Molding.
+          // Exclude records that were "born" in a later stage (Assemble/Primary splits)
+          const bornStage = b.manufacturingAttributes?.bornInStage;
+          if (bornStage && bornStage !== 'MOLDING') return false;
+
+          // If this is a split/recovered record from Molding, only show it if it originated here
           if (b.manufacturingAttributes?.isRecovered === true) {
             return b.manufacturingAttributes?.sentToQcFrom === 'MOLDING';
           }
           return true;
         }
 
-        // Legacy/Fallback for items sent to QC
-        const isFromMoldingQC = b.wipStatus === 'REWORK' && (
-          b.defectDescription?.toLowerCase().includes('molding') || 
-          b.defectDescription?.toLowerCase().includes('[molding]') ||
-          b.manufacturingAttributes?.sentToQcFrom === 'MOLDING'
-        );
-        
+        const isFromMoldingQC = b.wipStatus === 'REWORK' && b.manufacturingAttributes?.sentToQcFrom === 'MOLDING';
         return isFromMoldingQC;
       });
       setHistoryBatches(passedBatches);
@@ -263,7 +260,8 @@ const MoldingDashboard = () => {
             moldingCompleted: true,
             moldingPassedQty: scrap,
             sentToQcFrom: 'MOLDING',
-            isRecovered: true
+            isRecovered: true,
+            bornInStage: 'MOLDING' // Mark origin
           }
         };
         await manufacturingService.create(qcBatchPayload);

@@ -156,7 +156,8 @@ const PrimaryDashboard = () => {
             primaryCompleted: true,
             primaryPassedQty: scrap,
             sentToQcFrom: 'PRIMARY',
-            isRecovered: true
+            isRecovered: true,
+            bornInStage: 'PRIMARY' // Mark origin
           }
         };
         await manufacturingService.create(qcBatchPayload);
