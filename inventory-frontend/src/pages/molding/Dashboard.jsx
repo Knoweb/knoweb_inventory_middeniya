@@ -163,12 +163,20 @@ const MoldingDashboard = () => {
         if (isCurrentMolding) return false;
         
         // Filter by moldingCompleted flag (Persistent)
-        if (b.manufacturingAttributes?.moldingCompleted === true) return true;
+        if (b.manufacturingAttributes?.moldingCompleted === true) {
+          // IMPORTANT: If this is a split/recovered record, only show it in Molding history 
+          // if it was actually split/flagged FROM Molding.
+          if (b.manufacturingAttributes?.isRecovered === true) {
+            return b.manufacturingAttributes?.sentToQcFrom === 'MOLDING';
+          }
+          return true;
+        }
 
         // Legacy/Fallback for items sent to QC
         const isFromMoldingQC = b.wipStatus === 'REWORK' && (
           b.defectDescription?.toLowerCase().includes('molding') || 
-          b.defectDescription?.toLowerCase().includes('[molding]')
+          b.defectDescription?.toLowerCase().includes('[molding]') ||
+          b.manufacturingAttributes?.sentToQcFrom === 'MOLDING'
         );
         
         return isFromMoldingQC;
@@ -247,6 +255,7 @@ const MoldingDashboard = () => {
             lastStage: 'MOLDING',
             moldingCompleted: true,
             moldingPassedQty: scrap,
+            sentToQcFrom: 'MOLDING',
             isRecovered: true
           }
         };
@@ -277,7 +286,11 @@ const MoldingDashboard = () => {
             ...updatedBatch,
             inspectionStatus: 'PENDING',
             defectDescription: `[Molding] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
-            defectCount: scrap > 0 ? scrap : processed
+            defectCount: scrap > 0 ? scrap : processed,
+            manufacturingAttributes: {
+              ...(updatedBatch.manufacturingAttributes || {}),
+              sentToQcFrom: 'MOLDING'
+            }
           };
           await manufacturingService.update(selectedBatch.id, qcBatch);
         }
@@ -376,13 +389,13 @@ const MoldingDashboard = () => {
                   key={batch.id || idx} 
                   onClick={() => setViewHistoryBatch(batch)}
                   className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${
-                    batch.wipStatus === 'REWORK' 
+                    batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'MOLDING'
                       ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
                       : 'bg-slate-50 border-slate-100 hover:border-indigo-200'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    {batch.wipStatus === 'REWORK' ? (
+                    {batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? (
                       <div className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
                         <AlertTriangle size={12} /> Sent to QC (Unchecked)
                       </div>
@@ -406,11 +419,11 @@ const MoldingDashboard = () => {
                     {batch.manufacturingAttributes?.itemName || batch.itemName || 'Material Item'}
                   </p>
                   
-                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'REWORK' ? 'border-rose-100/50' : 'border-slate-200'}`}>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'REWORK' ? 'text-rose-600' : 'text-indigo-600'}`}>
+                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'border-rose-100/50' : 'border-slate-200'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'text-rose-600' : 'text-indigo-600'}`}>
                       View Details
                     </span>
-                    <ArrowRight size={14} className={batch.wipStatus === 'REWORK' ? 'text-rose-500' : 'text-indigo-500'} />
+                    <ArrowRight size={14} className={batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'text-rose-50' : 'text-indigo-500'} />
                   </div>
                 </div>
               ))}
@@ -677,17 +690,17 @@ const MoldingDashboard = () => {
                 </div>
               </div>
 
-<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'REWORK' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
+<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'REWORK' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    {viewHistoryBatch.wipStatus === 'REWORK' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+                  <div className={`p-2 rounded-full ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
                   </div>
                   <div>
-                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.wipStatus === 'REWORK' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
+                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
                       Progress
                     </span>
-                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.wipStatus === 'REWORK' ? 'text-rose-700' : 'text-emerald-700'}`}>
-                      {viewHistoryBatch.wipStatus === 'REWORK' ? 'Sent to QC (Unchecked)' : 'Passed Molding'}
+                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                      {viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'MOLDING' ? 'Sent to QC (Unchecked)' : 'Passed Molding'}
                     </span>
                   </div>
                 </div>

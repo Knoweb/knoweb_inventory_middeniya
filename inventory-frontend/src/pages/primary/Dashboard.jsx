@@ -58,13 +58,19 @@ const PrimaryDashboard = () => {
         if (isCurrentPrimary) return false;
 
         // Filter by primaryCompleted flag (Persistent)
-        if (b.manufacturingAttributes?.primaryCompleted === true) return true;
+        if (b.manufacturingAttributes?.primaryCompleted === true) {
+          if (b.manufacturingAttributes?.isRecovered === true) {
+            return b.manufacturingAttributes?.sentToQcFrom === 'PRIMARY';
+          }
+          return true;
+        }
 
         // Fallback for items sent to QC
         const isFromPrimaryQC = (b.wipStatus === 'REWORK' || b.wipStatus === 'QC_HOLD' || b.status === 'REWORK' || b.status === 'QC_HOLD') && (
           b.defectDescription?.toLowerCase().includes('primary') ||
           b.defectDescription?.toLowerCase().includes('[primary]') ||
-          b.defectDescription?.toLowerCase().includes('finishing')
+          b.defectDescription?.toLowerCase().includes('finishing') ||
+          b.manufacturingAttributes?.sentToQcFrom === 'PRIMARY'
         );
 
         return isFromPrimaryQC;
@@ -145,6 +151,7 @@ const PrimaryDashboard = () => {
             lastStage: 'PRIMARY',
             primaryCompleted: true,
             primaryPassedQty: scrap,
+            sentToQcFrom: 'PRIMARY',
             isRecovered: true
           }
         };
@@ -175,7 +182,11 @@ const PrimaryDashboard = () => {
             ...updatedBatch,
             inspectionStatus: 'PENDING',
             defectDescription: `[Primary Finishing] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
-            defectCount: scrap > 0 ? scrap : processed
+            defectCount: scrap > 0 ? scrap : processed,
+            manufacturingAttributes: {
+              ...(updatedBatch.manufacturingAttributes || {}),
+              sentToQcFrom: 'PRIMARY'
+            }
           };
           await manufacturingService.update(selectedBatch.id, qcBatch);
           await manufacturingService.updateWipStatus(selectedBatch.id, 'REWORK'); // Use REWORK for QC consistency
@@ -266,19 +277,19 @@ const PrimaryDashboard = () => {
                 <div
                   key={batch.id || idx}
                   onClick={() => setViewHistoryBatch(batch)}
-                  className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD'
+                  className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${(batch.wipStatus === 'REWORK' || batch.status === 'REWORK' || batch.wipStatus === 'QC_HOLD') && batch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY'
                     ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
                     : 'bg-slate-50 border-slate-100 hover:border-amber-200'
                     }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    {batch.wipStatus === 'QC_HOLD' || batch.status === 'QC_HOLD' || batch.wipStatus === 'REWORK' || batch.status === 'REWORK' ? (
+                    {(batch.wipStatus === 'REWORK' || batch.status === 'REWORK' || batch.wipStatus === 'QC_HOLD') && batch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY' ? (
                       <div className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
                         <AlertTriangle size={12} /> Sent to QC (Unchecked)
                       </div>
                     ) : (
-                      <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                        {batch.status || batch.wipStatus || 'Sent to Stores'}
+                      <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                        <CheckCircle2 size={12} /> Passed Primary / Inventory Ready
                       </div>
                     )}
                     <button
@@ -391,17 +402,17 @@ const PrimaryDashboard = () => {
                 </div>
               </div>
 
-              <div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
+              <div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+                  <div className={`p-2 rounded-full ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
                   </div>
                   <div>
-                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
+                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
                       Progress
                     </span>
-                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'text-rose-700' : 'text-emerald-700'}`}>
-                      {viewHistoryBatch.wipStatus === 'QC_HOLD' || viewHistoryBatch.status === 'QC_HOLD' || viewHistoryBatch.wipStatus === 'REWORK' || viewHistoryBatch.status === 'REWORK' ? 'Sent to QC (Unchecked)' : 'Passed Primary / Inventory Ready'}
+                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                      {viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'PRIMARY' ? 'Sent to QC (Unchecked)' : 'Passed Primary / Inventory Ready'}
                     </span>
                   </div>
                 </div>

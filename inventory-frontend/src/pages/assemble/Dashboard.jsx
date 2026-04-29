@@ -58,13 +58,19 @@ const AssembleDashboard = () => {
         if (isCurrentAssemble) return false;
 
         // Filter by assembleCompleted flag (Persistent)
-        if (b.manufacturingAttributes?.assembleCompleted === true) return true;
+        if (b.manufacturingAttributes?.assembleCompleted === true) {
+          if (b.manufacturingAttributes?.isRecovered === true) {
+            return b.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE';
+          }
+          return true;
+        }
         
         // Fallback for items sent to QC
         const isFromAssembleQC = b.wipStatus === 'REWORK' && (
           b.defectDescription?.toLowerCase().includes('assembling') || 
           b.defectDescription?.toLowerCase().includes('[assemble]') ||
-          b.defectDescription?.toLowerCase().includes('[assembling]')
+          b.defectDescription?.toLowerCase().includes('[assembling]') ||
+          b.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE'
         );
         
         return isFromAssembleQC;
@@ -143,6 +149,7 @@ const AssembleDashboard = () => {
             lastStage: 'ASSEMBLE',
             assembleCompleted: true,
             assemblePassedQty: scrap,
+            sentToQcFrom: 'ASSEMBLE',
             isRecovered: true
           }
         };
@@ -173,7 +180,11 @@ const AssembleDashboard = () => {
             ...updatedBatch,
             inspectionStatus: 'PENDING',
             defectDescription: `[Assembling] ${formData.remarks || 'Sent to QC (Unchecked)'}`,
-            defectCount: scrap > 0 ? scrap : processed
+            defectCount: scrap > 0 ? scrap : processed,
+            manufacturingAttributes: {
+              ...(updatedBatch.manufacturingAttributes || {}),
+              sentToQcFrom: 'ASSEMBLE'
+            }
           };
           await manufacturingService.update(selectedBatch.id, qcBatch);
         }
@@ -264,19 +275,19 @@ const AssembleDashboard = () => {
                   key={batch.id || idx} 
                   onClick={() => setViewHistoryBatch(batch)}
                   className={`cursor-pointer border rounded-3xl p-6 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/30 group flex flex-col ${
-                    batch.wipStatus === 'REWORK' 
+                    batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE'
                       ? 'bg-rose-50 border-rose-200 hover:border-rose-400 shadow-rose-200/20'
                       : 'bg-slate-50 border-slate-100 hover:border-emerald-200'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    {batch.wipStatus === 'REWORK' ? (
+                    {batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? (
                       <div className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
                         <AlertTriangle size={12} /> Sent to QC (Unchecked)
                       </div>
                     ) : (
-                      <div className="bg-cyan-50 text-cyan-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                        {batch.status || batch.wipStatus || 'Moved to Primary'}
+                      <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                        <CheckCircle2 size={12} /> Passed Assembly
                       </div>
                     )}
                     <button 
@@ -294,11 +305,11 @@ const AssembleDashboard = () => {
                     {batch.manufacturingAttributes?.itemName || batch.itemName || 'Assembled Component'}
                   </p>
                   
-                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'REWORK' ? 'border-rose-100/50' : 'border-slate-200'}`}>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'REWORK' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  <div className={`mt-auto pt-4 border-t flex justify-between items-center opacity-70 group-hover:opacity-100 transition-opacity ${batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'border-rose-100/50' : 'border-slate-200'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'text-rose-600' : 'text-emerald-600'}`}>
                       View Details
                     </span>
-                    <ArrowRight size={14} className={batch.wipStatus === 'REWORK' ? 'text-rose-500' : 'text-emerald-500'} />
+                    <ArrowRight size={14} className={batch.wipStatus === 'REWORK' && batch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'text-rose-500' : 'text-emerald-500'} />
                   </div>
                 </div>
               ))}
@@ -388,17 +399,17 @@ const AssembleDashboard = () => {
                 </div>
               </div>
 
-<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.wipStatus === 'REWORK' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
+<div className={`flex justify-between items-center mt-6 p-4 rounded-2xl border ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'bg-rose-50/50 border-rose-100/50' : 'bg-emerald-50/50 border-emerald-100/50'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${viewHistoryBatch.wipStatus === 'REWORK' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    {viewHistoryBatch.wipStatus === 'REWORK' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+                  <div className={`p-2 rounded-full ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
                   </div>
                   <div>
-                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.wipStatus === 'REWORK' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
+                    <span className={`block text-[10px] font-black uppercase tracking-widest ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'text-rose-600/70' : 'text-emerald-600/70'}`}>
                       Progress
                     </span>
-                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.wipStatus === 'REWORK' ? 'text-rose-700' : 'text-emerald-700'}`}>
-                      {viewHistoryBatch.wipStatus === 'REWORK' ? 'Sent to QC (Unchecked)' : 'Passed Assembly'}
+                    <span className={`block text-sm font-bold uppercase tracking-tight ${viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                      {viewHistoryBatch.manufacturingAttributes?.sentToQcFrom === 'ASSEMBLE' ? 'Sent to QC (Unchecked)' : 'Passed Assembly'}
                     </span>
                   </div>
                 </div>
