@@ -214,6 +214,12 @@ public class ManufacturingController {
     @PostMapping("/{id}/inspection")
     public ResponseEntity<ManufacturingProduct> updateInspection(
             @PathVariable Long id,
+            @RequestBody Map<String, Object> inspectionData) {
+        String status = (String) inspectionData.get("status");
+        String grade = (String) inspectionData.get("grade");
+        Integer defectCount = inspectionData.get("defectCount") != null 
+            ? ((Number) inspectionData.get("defectCount")).intValue() 
+            : null;
         String remarks = (String) inspectionData.get("remarks");
         
         return ResponseEntity.ok(manufacturingFeatureService.updateInspection(id, status, grade, defectCount, remarks));
