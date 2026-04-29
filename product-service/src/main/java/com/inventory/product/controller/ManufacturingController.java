@@ -220,9 +220,8 @@ public class ManufacturingController {
         Integer defectCount = inspectionData.get("defectCount") != null 
             ? ((Number) inspectionData.get("defectCount")).intValue() 
             : null;
-        String remarks = (String) inspectionData.get("remarks");
         
-        return ResponseEntity.ok(manufacturingFeatureService.updateInspection(id, status, grade, defectCount, remarks));
+        return ResponseEntity.ok(manufacturingFeatureService.updateInspection(id, status, grade, defectCount));
     }
     
     /**

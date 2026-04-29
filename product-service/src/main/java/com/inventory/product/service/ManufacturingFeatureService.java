@@ -313,7 +313,7 @@ public class ManufacturingFeatureService {
      * Update inspection result
      */
     public ManufacturingProduct updateInspection(Long id, String inspectionStatus, 
-                                                 String qualityGrade, Integer defectCount, String remarks) {
+                                                 String qualityGrade, Integer defectCount) {
         ManufacturingProduct product = manufacturingProductRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Manufacturing product not found"));
         
@@ -324,8 +324,6 @@ public class ManufacturingFeatureService {
         product.setQualityGrade(qualityGrade);
         product.setInspectionDate(LocalDateTime.now());
         product.setDefectCount(defectCount);
-        product.setNotes(remarks);
-        product.setDefectDescription(remarks); // Also store in defect description for backward compatibility in dashboards
 
         // Update Scrap Totals based on what was lost during QC
         if (product.getManufacturingAttributes() != null) {
