@@ -63,45 +63,24 @@ const FinishedGoods = () => {
       const aggregated = Object.values(groupedMap)
         .filter(group => group.hasFinishedGoods) // Only require some finished goods to show up
         .map(group => {
-          // 1. Calculate Started Qty by summing quantities of ALL fragments
-          // This is the most robust way because Started = Sum(Finished + Scrapped + WIP)
-          let startedQty = 0;
-          let totalScrap = 0;
-          let moldingScrap = 0;
-          let assembleScrap = 0;
-          let primaryScrap = 0;
+          // 1. Calculate final output (sum of all FINISHED_GOOD fragments)
+          const finalOutput = group.finalOutput;
 
-          group.allFragments.forEach(f => {
-            const qty = parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
-            const status = f.wipStatus || f.status;
-            const attr = f.manufacturingAttributes || {};
+          // 2. Get the maximum scrap counters seen across all fragments
+          const moldingScrap = Math.max(0, ...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.moldingScrap || 0)));
+          const assembleScrap = Math.max(0, ...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.assembleScrap || 0)));
+          const primaryScrap = Math.max(0, ...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.primaryScrap || 0)));
 
-            startedQty += qty;
+          // 3. Total Scrap = Sum of stage scraps
+          const totalScrap = moldingScrap + assembleScrap + primaryScrap;
 
-            if (status === 'SCRAPPED') {
-              totalScrap += qty;
-              
-              // Attribute to stage
-              const scrapStage = attr.lastStage || attr.sentToQcFrom;
-              if (scrapStage === 'MOLDING') moldingScrap += qty;
-              else if (scrapStage === 'ASSEMBLE') assembleScrap += qty;
-              else if (scrapStage === 'PRIMARY') primaryScrap += qty;
-            }
-          });
-
-          // Fallback for stage scraps if no SCRAPPED fragments exist (legacy data)
-          if (totalScrap === 0 || (moldingScrap === 0 && assembleScrap === 0 && primaryScrap === 0)) {
-            moldingScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.moldingScrap || 0)));
-            assembleScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.assembleScrap || 0)));
-            primaryScrap = Math.max(...group.allFragments.map(f => parseInt(f.manufacturingAttributes?.primaryScrap || 0)));
-            
-            // Re-sync total scrap if we used legacy fallback
-            if (totalScrap === 0) totalScrap = moldingScrap + assembleScrap + primaryScrap;
-          }
+          // 4. Started Qty = Final Output + Total Scrap
+          const startedQty = finalOutput + totalScrap;
 
           return {
             ...group,
             startedQty,
+            finalOutput,
             totalScrap,
             moldingScrap,
             assembleScrap,
