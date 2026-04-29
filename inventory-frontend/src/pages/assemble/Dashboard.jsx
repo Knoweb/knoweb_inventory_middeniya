@@ -115,6 +115,7 @@ const AssembleDashboard = () => {
         const newBatchNumber = baseBatchNumber.includes('-QC') ? baseBatchNumber : `${baseBatchNumber}-QC`;
 
         // 1. Advance the Good part to Primary
+        // 1. Update the EXISTING batch to move forward as the "Good" part
         const goodBatch = {
           ...selectedBatch,
           manufacturingAttributes: {
@@ -124,20 +125,29 @@ const AssembleDashboard = () => {
             lastStage: 'ASSEMBLE',
             assembleCompleted: true,
             assemblePassedQty: validQty,
+            // CLEAR QC flags for the good part so it shows as a clean "Passed" record in history
+            isRecovered: false,
+            sentToQcFrom: null,
             notes: 'Good units from split batch'
           },
-          wipStatus: 'WIP_PRIMARY'
+          wipStatus: 'WIP_PRIMARY',
+          inspectionStatus: null,
+          defectCount: 0,
+          qualityGrade: null
         };
         await manufacturingService.update(selectedBatch.id, goodBatch);
-        await manufacturingService.updateWipStatus(selectedBatch.id, 'WIP_PRIMARY');
 
-        // 2. Create a NEW batch for the items that need QC
+        // 2. Create a NEW batch for the items that need QC (the Scrap part)
+        // Ensure a truly unique batch number for the split fragment
+        const timestamp = new Date().getTime().toString().slice(-4);
+        const splitBatchNumber = `${newBatchNumber}-${timestamp}`;
+
         const qcBatchPayload = {
           productId: selectedBatch.productId,
           productType: 'WIP',
           wipStatus: 'REWORK',
           workOrderNumber: selectedBatch.workOrderNumber,
-          batchNumber: newBatchNumber,
+          batchNumber: splitBatchNumber,
           orgId: user?.orgId,
           inspectionStatus: 'PENDING',
           defectDescription: `[Assembling] ${formData.remarks || 'Flagged for Inspection'}`,
@@ -145,7 +155,7 @@ const AssembleDashboard = () => {
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
-            batchNumber: newBatchNumber,
+            batchNumber: splitBatchNumber,
             lastStage: 'ASSEMBLE',
             assembleCompleted: true,
             assemblePassedQty: scrap,
@@ -160,6 +170,9 @@ const AssembleDashboard = () => {
         // SCENARIO: Standard update
         const updatedBatch = {
           ...selectedBatch,
+          inspectionStatus: null,
+          defectCount: 0,
+          qualityGrade: null,
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
@@ -167,7 +180,9 @@ const AssembleDashboard = () => {
             scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
             lastStage: 'ASSEMBLE',
             assembleCompleted: true,
-            assemblePassedQty: validQty
+            assemblePassedQty: validQty,
+            isRecovered: false,
+            sentToQcFrom: null
           }
         };
         
@@ -183,14 +198,15 @@ const AssembleDashboard = () => {
             defectCount: scrap > 0 ? scrap : processed,
             manufacturingAttributes: {
               ...(updatedBatch.manufacturingAttributes || {}),
-              sentToQcFrom: 'ASSEMBLE'
+              sentToQcFrom: 'ASSEMBLE',
+              isRecovered: true
             }
           };
           await manufacturingService.update(selectedBatch.id, qcBatch);
-        }
-        
-        await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
-        showToast(formData.qualityCheckPassed 
+          await manufacturingService.updateWipStatus(selectedBatch.id, 'REWORK');
+        } else {
+          await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
+        }showToast(formData.qualityCheckPassed 
           ? `Batch successfully advanced to Primary Finishing with ${validQty} good pieces!` 
           : `Batch sent to QC Dashboard for inspection.`, 'success');
       }

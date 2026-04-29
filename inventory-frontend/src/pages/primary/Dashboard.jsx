@@ -107,12 +107,12 @@ const PrimaryDashboard = () => {
       setIsSubmitting(true);
       const processed = parseInt(formData.processedQuantity) || 0;
       const scrap = parseInt(formData.scrapQuantity) || 0;
-      const validQty = Math.max(0, processed - scrap); // Good units
+      const validQty = Math.max(0, processed - scrap);
+      const baseBatchNumber = selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber || selectedBatch.workOrderNumber || `BATCH-${selectedBatch.id}`;
+      const cleanBatchNumber = String(baseBatchNumber).replace(/-QC$/, '');
 
       if (!formData.qualityCheckPassed && scrap > 0 && validQty > 0) {
-        // SCENARIO: Split Batch - Good items go to Stores, Scrap items go to QC
-
-        // 1. Advance the Good part to Finished Goods
+        // 1. Update EXISTING batch as the "Good" part to Finished Goods
         const goodBatch = {
           ...selectedBatch,
           manufacturingAttributes: {
@@ -122,24 +122,28 @@ const PrimaryDashboard = () => {
             lastStage: 'PRIMARY',
             primaryCompleted: true,
             primaryPassedQty: validQty,
-            notes: 'Good units from split batch'
+            isRecovered: false,
+            sentToQcFrom: null,
+            notes: 'Good units from split finishing'
           },
-          wipStatus: 'FINISHED_GOOD'
+          wipStatus: 'FINISHED_GOOD',
+          inspectionStatus: null,
+          defectCount: 0,
+          qualityGrade: null
         };
         await manufacturingService.update(selectedBatch.id, goodBatch);
         await manufacturingService.updateWipStatus(selectedBatch.id, 'FINISHED_GOOD');
 
-        // 2. Create a NEW batch for the items that need QC
-        const baseBatchNumber = selectedBatch.manufacturingAttributes?.batchNumber || selectedBatch.batchNumber || selectedBatch.workOrderNumber || `BATCH-${selectedBatch.id}`;
-        const cleanBatchNumber = String(baseBatchNumber).replace(/-QC$/, '');
-        const newBatchNumber = cleanBatchNumber + "-QC";
+        // 2. Create a NEW batch for the items that need QC (Scrap part)
+        const timestamp = new Date().getTime().toString().slice(-4);
+        const splitBatchNumber = `${cleanBatchNumber}-${timestamp}`;
 
         const qcBatchPayload = {
           productId: selectedBatch.productId,
           productType: 'WIP',
           wipStatus: 'REWORK',
           workOrderNumber: selectedBatch.workOrderNumber,
-          batchNumber: newBatchNumber,
+          batchNumber: splitBatchNumber,
           orgId: user?.orgId,
           inspectionStatus: 'PENDING',
           defectDescription: `[Primary Finishing] ${formData.remarks || 'Flagged for Inspection'}`,
@@ -147,7 +151,7 @@ const PrimaryDashboard = () => {
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: scrap,
-            batchNumber: newBatchNumber,
+            batchNumber: splitBatchNumber,
             lastStage: 'PRIMARY',
             primaryCompleted: true,
             primaryPassedQty: scrap,
@@ -162,6 +166,9 @@ const PrimaryDashboard = () => {
         // SCENARIO: Standard update
         const updatedBatch = {
           ...selectedBatch,
+          inspectionStatus: null,
+          defectCount: 0,
+          qualityGrade: null,
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
@@ -169,14 +176,16 @@ const PrimaryDashboard = () => {
             scrapRecorded: (selectedBatch.manufacturingAttributes?.scrapRecorded || 0) + scrap,
             lastStage: 'PRIMARY',
             primaryCompleted: true,
-            primaryPassedQty: validQty
+            primaryPassedQty: validQty,
+            isRecovered: false,
+            sentToQcFrom: null
           }
         };
-
+        
         await manufacturingService.update(selectedBatch.id, updatedBatch);
-
+        
         const newStatus = formData.qualityCheckPassed ? 'FINISHED_GOOD' : 'QC_HOLD';
-
+        
         if (newStatus === 'QC_HOLD') {
           const qcBatch = {
             ...updatedBatch,
@@ -185,11 +194,12 @@ const PrimaryDashboard = () => {
             defectCount: scrap > 0 ? scrap : processed,
             manufacturingAttributes: {
               ...(updatedBatch.manufacturingAttributes || {}),
-              sentToQcFrom: 'PRIMARY'
+              sentToQcFrom: 'PRIMARY',
+              isRecovered: true
             }
           };
           await manufacturingService.update(selectedBatch.id, qcBatch);
-          await manufacturingService.updateWipStatus(selectedBatch.id, 'REWORK'); // Use REWORK for QC consistency
+          await manufacturingService.updateWipStatus(selectedBatch.id, 'REWORK');
         } else {
           await manufacturingService.updateWipStatus(selectedBatch.id, newStatus);
         }
