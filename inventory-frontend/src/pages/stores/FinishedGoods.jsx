@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Package, Layers, Box, CheckCircle2, RefreshCw, Trash2 } from "lucide-react";
 import { manufacturingService } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
 const FinishedGoods = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [finishedBatches, setFinishedBatches] = useState([]);
   const [batchToDelete, setBatchToDelete] = useState(null);
