@@ -80,10 +80,9 @@ const FinishedGoods = () => {
       });
 
       const aggregated = Object.values(groupedMap)
-        .filter(group => group.isFullyProcessed && group.hasFinishedGoods)
+        .filter(group => group.hasFinishedGoods) // Only require some finished goods to show up
         .map(group => ({
           ...group,
-          // Total Scrap is the sum of stage scraps
           totalScrap: group.moldingScrap + group.assembleScrap + group.primaryScrap
         }))
         .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -162,8 +161,13 @@ const FinishedGoods = () => {
               {finishedBatches.map((batch, idx) => (
                 <div key={batch.id || idx} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 transition-all flex flex-col">
                   <div className="flex justify-between items-start mb-4">
-                    <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
-                      {batch.status || batch.wipStatus || 'FINISHED_GOOD'}
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${batch.isFullyProcessed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {batch.isFullyProcessed ? 'Complete' : 'Processing'}
+                      </span>
+                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter">
+                        FINISHED_GOOD
+                      </span>
                     </div>
                       <div className="flex items-start gap-4">
                         <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-right">
