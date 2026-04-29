@@ -57,7 +57,11 @@ const FinishedGoods = () => {
         }
 
         // Accumulate totals ONLY for records that actually have data
-        group.totalQuantity += parseInt(batch.quantity || attr.quantity || 0);
+        // Final Output should ONLY be the sum of fragments that reached FINISHED_GOOD status
+        if (status === 'FINISHED_GOOD') {
+          group.totalQuantity += parseInt(batch.quantity || attr.quantity || 0);
+        }
+
         group.moldingPassed += parseInt(attr.moldingPassedQty || 0);
         group.moldingScrap += parseInt(attr.moldingScrap || 0);
         group.assemblePassed += parseInt(attr.assemblePassedQty || 0);
@@ -240,7 +244,7 @@ const FinishedGoods = () => {
                           Started Qty
                         </span>
                         <span className="text-base font-black text-slate-700">
-                          {batch.moldingPassed + batch.moldingScrap}
+                          {batch.totalQuantity + (batch.moldingScrap + batch.assembleScrap + batch.primaryScrap)}
                         </span>
                       </div>
                       <div className="w-px h-8 bg-slate-200"></div>
