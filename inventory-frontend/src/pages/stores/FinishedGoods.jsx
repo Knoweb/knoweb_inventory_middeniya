@@ -18,7 +18,13 @@ const FinishedGoods = () => {
 
       wipData.forEach(batch => {
         const fullNumber = batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`;
-        const baseNumber = String(fullNumber).replace(/-QC$/, '').trim();
+        
+        // AGGRESSIVE ROOT IDENTIFICATION: Extract the true origin (e.g., BATCH-PL-3)
+        // This strips -QC segments and any 4-digit timestamp suffixes
+        const baseNumber = String(fullNumber)
+          .split('-QC')[0]              // Remove anything after -QC
+          .replace(/-[0-9]{4}$/, '')     // Remove 4-digit timestamp suffixes
+          .trim();
         
         if (!groupedMap[baseNumber]) {
           groupedMap[baseNumber] = {
@@ -26,15 +32,13 @@ const FinishedGoods = () => {
             baseNumber: baseNumber,
             itemName: batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component',
             updatedAt: batch.updatedAt || batch.createdAt,
-            totalQuantity: 0,
-            moldingPassed: 0,
+            finalOutput: 0,
+            totalScrapped: 0,
             moldingScrap: 0,
-            assemblePassed: 0,
             assembleScrap: 0,
-            primaryPassed: 0,
             primaryScrap: 0,
             originalRecords: [],
-            isFullyProcessed: true, // Optimistic start
+            isFullyProcessed: true,
             hasFinishedGoods: false
           };
         }
@@ -43,31 +47,25 @@ const FinishedGoods = () => {
         const group = groupedMap[baseNumber];
         const status = batch.wipStatus || batch.status;
 
-        // Check if this specific fragment is "Finished"
         const isFinished = status === 'FINISHED_GOOD' || status === 'SCRAPPED';
+        if (!isFinished) group.isFullyProcessed = false;
+        if (status === 'FINISHED_GOOD') group.hasFinishedGoods = true;
+
+        // PRECISION SUMMATION: Only sum quantities based on the fragment's final state
+        // to avoid duplication of inherited counters.
+        const fragmentQty = parseInt(batch.quantity || attr.quantity || 0);
         
-        // If ANY fragment is still in progress, the whole batch is not fully processed
-        if (!isFinished) {
-          group.isFullyProcessed = false;
-        }
-
-        // If at least one fragment reached Finished Good, we mark it as having output
         if (status === 'FINISHED_GOOD') {
-          group.hasFinishedGoods = true;
+          group.finalOutput += fragmentQty;
+        } else if (status === 'SCRAPPED') {
+          group.totalScrapped += fragmentQty;
         }
 
-        // Accumulate totals ONLY for records that actually have data
-        // Final Output should ONLY be the sum of fragments that reached FINISHED_GOOD status
-        if (status === 'FINISHED_GOOD') {
-          group.totalQuantity += parseInt(batch.quantity || attr.quantity || 0);
-        }
-
-        group.moldingPassed += parseInt(attr.moldingPassedQty || 0);
-        group.moldingScrap += parseInt(attr.moldingScrap || 0);
-        group.assemblePassed += parseInt(attr.assemblePassedQty || 0);
-        group.assembleScrap += parseInt(attr.assembleScrap || 0);
-        group.primaryPassed += parseInt(attr.primaryPassedQty || 0);
-        group.primaryScrap += parseInt(attr.primaryScrap || 0);
+        // For stage-specific scrap, we take the MAX value found in any fragment 
+        // because these counters are cumulative and cloned. Summing them is wrong.
+        group.moldingScrap = Math.max(group.moldingScrap, parseInt(attr.moldingScrap || 0));
+        group.assembleScrap = Math.max(group.assembleScrap, parseInt(attr.assembleScrap || 0));
+        group.primaryScrap = Math.max(group.primaryScrap, parseInt(attr.primaryScrap || 0));
         
         const currentBatchDate = new Date(batch.updatedAt || batch.createdAt);
         const groupDate = new Date(group.updatedAt);
@@ -76,9 +74,14 @@ const FinishedGoods = () => {
         group.originalRecords.push(batch.id);
       });
 
-      // FILTERING: Only show groups that are fully processed AND have at least some finished goods
       const aggregated = Object.values(groupedMap)
         .filter(group => group.isFullyProcessed && group.hasFinishedGoods)
+        .map(group => ({
+          ...group,
+          // Final total scrap is the sum of quantities of all fragments that were SCRAPPED
+          // PLUS any losses recorded during QC (captured in the stage counters)
+          totalScrap: Math.max(group.totalScrapped, group.moldingScrap + group.assembleScrap + group.primaryScrap)
+        }))
         .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
       setFinishedBatches(aggregated);
@@ -186,78 +189,61 @@ const FinishedGoods = () => {
                     {/* Molding Stats */}
                     <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 relative group">
                       <div className="text-[9px] font-black text-slate-400 mb-2 uppercase tracking-widest flex items-center justify-between">
-                        <span>Molding</span>
+                        <span>Molding Scrap</span>
                         <Layers size={10} className="opacity-50" />
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">Process Qty</span>
-                          <span className="text-sm font-black text-slate-700">{batch.moldingPassed}</span>
-                        </div>
-                        <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
-                          <span className="text-sm font-black text-rose-600">{batch.moldingScrap}</span>
-                        </div>
-                      </div>
+                      <div className="text-xl font-black text-rose-600">{batch.moldingScrap}</div>
                     </div>
 
                     {/* Assemble Stats */}
                     <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 relative group">
                       <div className="text-[9px] font-black text-slate-400 mb-2 uppercase tracking-widest flex items-center justify-between">
-                        <span>Assemble</span>
+                        <span>Assemble Scrap</span>
                         <Box size={10} className="opacity-50" />
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">Process Qty</span>
-                          <span className="text-sm font-black text-slate-700">{batch.assemblePassed}</span>
-                        </div>
-                        <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
-                          <span className="text-sm font-black text-rose-600">{batch.assembleScrap}</span>
-                        </div>
-                      </div>
+                      <div className="text-xl font-black text-rose-600">{batch.assembleScrap}</div>
                     </div>
 
                     {/* Primary Stats */}
                     <div className="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100/50 relative group">
                       <div className="text-[9px] font-black text-indigo-400 mb-2 uppercase tracking-widest flex items-center justify-between">
-                        <span>Primary</span>
+                        <span>Primary Scrap</span>
                         <CheckCircle2 size={10} className="opacity-50" />
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-indigo-500 uppercase">Final Output</span>
-                          <span className="text-sm font-black text-indigo-700">{batch.totalQuantity}</span>
-                        </div>
-                        <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-rose-500/70 uppercase">Scrap Limit</span>
-                          <span className="text-sm font-black text-rose-600">{batch.primaryScrap}</span>
-                        </div>
-                      </div>
-                      </div>
-                    </div>
-                    {/* Summary Footer */}
-                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 rounded-2xl p-4">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                          Started Qty
-                        </span>
-                        <span className="text-base font-black text-slate-700">
-                          {batch.totalQuantity + (batch.moldingScrap + batch.assembleScrap + batch.primaryScrap)}
-                        </span>
-                      </div>
-                      <div className="w-px h-8 bg-slate-200"></div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-[9px] font-black text-rose-400/80 uppercase tracking-widest mb-1">
-                          Total Scrap
-                        </span>
-                        <span className="text-base font-black text-rose-600">
-                          {batch.moldingScrap + batch.assembleScrap + batch.primaryScrap}
-                        </span>
-                      </div>
+                      <div className="text-xl font-black text-rose-600">{batch.primaryScrap}</div>
                     </div>
                   </div>
+                  
+                  {/* Summary Footer */}
+                  <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 rounded-2xl p-4">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Started Qty
+                      </span>
+                      <span className="text-base font-black text-slate-700">
+                        {batch.finalOutput + batch.totalScrap}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">
+                        Final Output
+                      </span>
+                      <span className="text-base font-black text-indigo-600">
+                        {batch.finalOutput}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] font-black text-rose-400/80 uppercase tracking-widest mb-1">
+                        Total Scrap
+                      </span>
+                      <span className="text-base font-black text-rose-600">
+                        {batch.totalScrap}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
