@@ -20,18 +20,15 @@ const FinishedGoods = () => {
       const groupedMap = {};
 
       allData.forEach(batch => {
-        const fullNumber = batch.manufacturingAttributes?.batchNumber || batch.batchNumber || batch.workOrderNumber || `BATCH-${batch.id}`;
+        // Use Work Order as the primary grouping key to catch all split fragments
+        const groupKey = batch.workOrderNumber || batch.batchNumber || `BATCH-${batch.id}`;
+        const baseNumber = String(batch.batchNumber || batch.workOrderNumber || groupKey).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim();
         
-        // Extract root batch number (e.g., BATCH-PL-3)
-        const baseNumber = String(fullNumber)
-          .split('-QC')[0]
-          .replace(/-[0-9]{4}$/, '')
-          .trim();
-        
-        if (!groupedMap[baseNumber]) {
-          groupedMap[baseNumber] = {
+        if (!groupedMap[groupKey]) {
+          groupedMap[groupKey] = {
             id: batch.id,
             baseNumber: baseNumber,
+            workOrder: batch.workOrderNumber,
             itemName: batch.manufacturingAttributes?.itemName || batch.itemName || 'Finished Component',
             updatedAt: batch.updatedAt || batch.createdAt,
             finalOutput: 0,
@@ -41,10 +38,9 @@ const FinishedGoods = () => {
           };
         }
 
-        const group = groupedMap[baseNumber];
+        const group = groupedMap[groupKey];
         const status = batch.wipStatus || batch.status;
 
-        // Visibility Rule: Hide batch if any fragment is still in progress
         const isTerminalStatus = status === 'FINISHED_GOOD' || status === 'SCRAPPED';
         if (!isTerminalStatus) group.isFullyProcessed = false;
         if (status === 'FINISHED_GOOD') group.hasFinishedGoods = true;
@@ -52,7 +48,6 @@ const FinishedGoods = () => {
         const fragmentQty = parseInt(batch.quantity || batch.manufacturingAttributes?.quantity || 0);
         if (status === 'FINISHED_GOOD') group.finalOutput += fragmentQty;
 
-        // Keep all fragments to find the root/oldest one later
         group.allFragments.push(batch);
         
         const currentBatchDate = new Date(batch.updatedAt || batch.createdAt);
@@ -61,7 +56,7 @@ const FinishedGoods = () => {
       });
 
       const aggregated = Object.values(groupedMap)
-        .filter(group => group.hasFinishedGoods) // Only require some finished goods to show up
+        .filter(group => group.hasFinishedGoods)
         .map(group => {
           // 1. Calculate final output (sum of all FINISHED_GOOD fragments)
           const finalOutput = group.finalOutput;
