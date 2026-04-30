@@ -111,34 +111,43 @@ const FinishedGoods = () => {
 
             let totalStageScrap = 0;
 
-            // Process each branch point
+            // 1. Process each branch point to capture new deltas
             Object.keys(childrenByParent).forEach(pid => {
-              const siblings = childrenByParent[pid];
-              const parentQty = (pid !== 'ROOT' && fragmentMap[pid]) ? getQty(fragmentMap[pid]) : Math.max(...group.allFragments.map(getQty));
+              if (pid === 'ROOT') return; // Roots handled separately
               
-              // Mass Balance Check: Sum of sibling quantities
+              const siblings = childrenByParent[pid];
+              const parentFragment = fragmentMap[pid];
+              const parentQty = getQty(parentFragment);
+              const parentVal = getValue(parentFragment);
+              
               const totalSiblingQty = siblings.reduce((sum, s) => sum + getQty(s), 0);
               
-              if (totalSiblingQty <= parentQty * 1.1) { // 10% tolerance for rounding/bad data
-                // Parallel Branches: Sum the unique increments
+              // If sibling quantities don't exceed parent, they are independent branches
+              if (totalSiblingQty <= parentQty * 1.1) {
                 siblings.forEach(s => {
-                  const parentVal = (pid !== 'ROOT' && fragmentMap[pid]) ? getValue(fragmentMap[pid]) : 0;
                   totalStageScrap += Math.max(0, getValue(s) - parentVal);
                 });
               } else {
-                // Sequential/Clones: Take the Max increment
+                // If they overlap significantly, they are likely sequential/clones
                 const maxChildVal = Math.max(...siblings.map(s => getValue(s)));
-                const parentVal = (pid !== 'ROOT' && fragmentMap[pid]) ? getValue(fragmentMap[pid]) : 0;
                 totalStageScrap += Math.max(0, maxChildVal - parentVal);
               }
             });
 
-            // Add the initial baseline from the highest quantity root
+            // 2. Add the baseline from all root fragments
+            // We group roots by stripped batch number to identify independent start points
             const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
-            if (roots.length > 0) {
-              const mainRoot = roots.reduce((prev, curr) => getQty(prev) >= getQty(curr) ? prev : curr);
-              totalStageScrap += getValue(mainRoot);
-            }
+            const rootsByBatch = {};
+            roots.forEach(r => {
+              const bn = r.batchNumber ? String(r.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim() : `ROOT-${r.id}`;
+              if (!rootsByBatch[bn]) rootsByBatch[bn] = [];
+              rootsByBatch[bn].push(r);
+            });
+
+            Object.values(rootsByBatch).forEach(batchRoots => {
+              // Within each root-batch line, we take the max to avoid double counting clones
+              totalStageScrap += Math.max(...batchRoots.map(r => getValue(r)));
+            });
 
             return totalStageScrap;
           };
