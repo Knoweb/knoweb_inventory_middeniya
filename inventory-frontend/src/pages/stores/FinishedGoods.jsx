@@ -89,48 +89,44 @@ const FinishedGoods = () => {
           const fragmentMap = {};
           group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
 
-          const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
-          maxObservedQty = Math.max(...group.allFragments.map(getQty));
-
           const getStageScrapSum = (stageKey) => {
             const attrKey = stageKey.toLowerCase() + 'Scrap';
-            const extraKey = (stageKey === 'PRIMARY') ? 'scrapRecorded' : null;
 
             const getValue = (f) => {
               if (!f) return 0;
               const attr = f.manufacturingAttributes || {};
-              return parseInt(attr[attrKey] || 0) + (extraKey ? parseInt(attr[extraKey] || 0) : 0);
+              return parseInt(attr[attrKey] || 0);
             };
 
-            // 1. Identify Leaf Nodes (terminal fragments)
-            const leafNodes = group.allFragments.filter(f => {
-              return !group.allFragments.some(child => child.parentProductId === f.id);
-            });
+            const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
 
-            // 2. Strict Mass-Balance Bucket Summation
-            // Sort by quantity descending to prioritize larger (more definitive) fragments
-            const sortedLeaves = [...leafNodes].sort((a, b) => getQty(b) - getQty(a));
-            let totalScrap = 0;
-            let qtyAccountedFor = 0;
-            const buffer = maxObservedQty * 1.1; // Allow 10% tolerance for scrap overlaps
+            // Use a Set to track "seen" delta events to protect against clones and inherited duplicates
+            const seenEvents = new Set();
+            let totalDelta = 0;
 
-            sortedLeaves.forEach(leaf => {
-              const q = getQty(leaf);
-              const s = getValue(leaf);
+            // Sort fragments by quantity descending to handle potential clones/updates properly
+            const sortedFragments = [...group.allFragments].sort((a, b) => getQty(b) - getQty(a));
+
+            sortedFragments.forEach(f => {
+              const currentVal = getValue(f);
+              const parent = f.parentProductId ? fragmentMap[f.parentProductId] : null;
+              const parentVal = getValue(parent);
               
-              // If this leaf fits in our batch capacity, it's a parallel branch
-              if (qtyAccountedFor + q <= buffer) {
-                totalScrap += s;
-                qtyAccountedFor += q;
-              } else if (qtyAccountedFor === 0) {
-                // Always take at least the largest leaf
-                totalScrap = s;
-                qtyAccountedFor = q;
+              const delta = Math.max(0, currentVal - parentVal);
+              
+              if (delta > 0) {
+                // Unique key based on stage, delta, and parent. 
+                // We REMOVED quantity because splits have different quantities but share inherited scrap.
+                const eventKey = `${stageKey}_${delta}_${f.parentProductId || 'root'}`;
+                
+                if (!seenEvents.has(eventKey)) {
+                  totalDelta += delta;
+                  seenEvents.add(eventKey);
+                }
               }
-              // Otherwise, it's an overlapping clone/update - ignore it
             });
 
-            return totalScrap;
+            return totalDelta;
           };
 
           const moldingScrap = getStageScrapSum('MOLDING');
@@ -139,11 +135,15 @@ const FinishedGoods = () => {
 
           group.allFragments.forEach(f => {
             const status = f.wipStatus || f.status;
+            const attr = f.manufacturingAttributes || {};
+            const qty = parseInt(f.quantity || attr.quantity || 0);
+
             if (status === 'FINISHED_GOOD') {
-              // Only count quantity if it's a leaf node to avoid double counting updates
-              const isLeaf = !group.allFragments.some(child => child.parentProductId === f.id);
-              if (isLeaf) finalOutput += getQty(f);
+              // Ensure we don't double count clones by only counting "Leaf Nodes"
+              const hasChild = group.allFragments.some(child => child.parentProductId === f.id);
+              if (!hasChild) finalOutput += qty;
             }
+            if (qty > maxObservedQty) maxObservedQty = qty;
           });
 
           const totalScrap = moldingScrap + assembleScrap + primaryScrap;
