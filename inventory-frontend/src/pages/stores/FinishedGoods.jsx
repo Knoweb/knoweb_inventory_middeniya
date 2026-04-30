@@ -89,51 +89,35 @@ const FinishedGoods = () => {
           const fragmentMap = {};
           group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
 
-          const getStageScrapSum = (stageKey) => {
+          // Helper to get scrap value from a fragment
+          const getFragmentScrap = (f, stageKey) => {
+            if (!f) return 0;
             const attrKey = stageKey.toLowerCase() + 'Scrap';
             const extraKey = (stageKey === 'PRIMARY') ? 'scrapRecorded' : null;
+            const attr = f.manufacturingAttributes || {};
+            return parseInt(attr[attrKey] || 0) + (extraKey ? parseInt(attr[extraKey] || 0) : 0);
+          };
 
-            const getValue = (f) => {
-              if (!f) return 0;
-              const attr = f.manufacturingAttributes || {};
-              return parseInt(attr[attrKey] || 0) + (extraKey ? parseInt(attr[extraKey] || 0) : 0);
-            };
+          const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
 
-            const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
-            const groupMaxQty = Math.max(...group.allFragments.map(getQty));
+          // 1. Identify Leaf Nodes (terminal fragments with no children in this group)
+          const leafNodes = group.allFragments.filter(f => {
+            return !group.allFragments.some(child => child.parentProductId === f.id);
+          });
 
-            // 1. Identify "Roots" (fragments with no parent in this list)
-            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
-            
-            // 2. Sum the values of roots, but check for "clones" (sequential updates with missing parents)
-            // If the sum of root quantities exceeds the max batch quantity significantly, they are clones.
-            let baseline = 0;
-            const sortedRoots = [...roots].sort((a, b) => getQty(b) - getQty(a));
-            let currentRootSum = 0;
-            
-            sortedRoots.forEach(r => {
-              if (currentRootSum + getQty(r) <= groupMaxQty * 1.1) {
-                baseline += getValue(r);
-                currentRootSum += getQty(r);
-              } else if (currentRootSum === 0) {
-                // If it's the first one and it's already large, it's our primary baseline
-                baseline = getValue(r);
-                currentRootSum = getQty(r);
-              }
-              // Otherwise it's likely a smaller clone/fragment of an already counted baseline
-            });
+          // 2. Mass Balance check on Leaf Nodes
+          const totalLeafQty = leafNodes.reduce((sum, leaf) => sum + getQty(leaf), 0);
+          const maxLeafQty = leafNodes.length > 0 ? Math.max(...leafNodes.map(getQty)) : 0;
+          maxObservedQty = Math.max(...group.allFragments.map(getQty));
 
-            // 3. Add all deltas from child fragments
-            let deltas = 0;
-            group.allFragments.forEach(f => {
-              if (f.parentProductId && fragmentMap[f.parentProductId]) {
-                const currentVal = getValue(f);
-                const parentVal = getValue(fragmentMap[f.parentProductId]);
-                deltas += Math.max(0, currentVal - parentVal);
-              }
-            });
-
-            return baseline + deltas;
+          const getStageScrapSum = (stageKey) => {
+            // If leaf nodes represent a valid split (sum of qty <= max possible)
+            // then we should SUM their scraps. Otherwise take MAX.
+            if (totalLeafQty <= maxObservedQty * 1.1) {
+              return leafNodes.reduce((sum, leaf) => sum + getFragmentScrap(leaf, stageKey), 0);
+            } else {
+              return Math.max(...leafNodes.map(leaf => getFragmentScrap(leaf, stageKey)));
+            }
           };
 
           const moldingScrap = getStageScrapSum('MOLDING');
@@ -142,14 +126,16 @@ const FinishedGoods = () => {
 
           group.allFragments.forEach(f => {
             const status = f.wipStatus || f.status;
-            const attr = f.manufacturingAttributes || {};
-            const qty = parseInt(f.quantity || attr.quantity || 0);
-
-            if (status === 'FINISHED_GOOD') finalOutput += qty;
-            if (qty > maxObservedQty) maxObservedQty = qty;
+            if (status === 'FINISHED_GOOD') {
+              // Only count quantity if it's a leaf node to avoid double counting updates
+              if (leafNodes.some(l => l.id === f.id)) {
+                finalOutput += getQty(f);
+              }
+            }
           });
 
           const totalScrap = moldingScrap + assembleScrap + primaryScrap;
+          // Started Qty = The total input into the system (Output + Scrap)
           const startedQty = Math.max(maxObservedQty, finalOutput + totalScrap);
 
           return {
