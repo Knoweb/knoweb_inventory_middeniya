@@ -99,9 +99,21 @@ const FinishedGoods = () => {
               return parseInt(attr[attrKey] || 0) + (extraKey ? parseInt(attr[extraKey] || 0) : 0);
             };
 
-            // 1. Get the baseline from the maximum value among all roots (fragments with no parent in this list)
+            // 1. Handle Roots (fragments with no parent in this list)
+            // Group them by stripped Batch Number to identify truly independent branches
             const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
-            const baseline = roots.length > 0 ? Math.max(...roots.map(r => getValue(r))) : 0;
+            const rootsByBatch = {};
+            roots.forEach(r => {
+              const bn = r.batchNumber ? String(r.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim() : `ROOT-${r.id}`;
+              if (!rootsByBatch[bn]) rootsByBatch[bn] = [];
+              rootsByBatch[bn].push(r);
+            });
+
+            // Baseline = Sum of Max values per independent batch line
+            let baseline = 0;
+            Object.values(rootsByBatch).forEach(batchRoots => {
+              baseline += Math.max(...batchRoots.map(r => getValue(r)));
+            });
 
             // 2. Sum up all incremental deltas from every child record
             let totalDeltas = 0;
