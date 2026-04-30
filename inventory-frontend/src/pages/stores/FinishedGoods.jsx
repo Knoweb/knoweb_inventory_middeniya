@@ -89,41 +89,33 @@ const FinishedGoods = () => {
           const fragmentMap = {};
           group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
 
+          // Find the true root (earliest created fragment in the group)
+          const sortedByDate = [...group.allFragments].sort((a, b) => {
+            const dateA = new Date(a.createdAt || a.created_at || a.updatedAt || 0);
+            const dateB = new Date(b.createdAt || b.created_at || b.updatedAt || 0);
+            return dateA - dateB;
+          });
+          const trueRoot = sortedByDate[0];
+
           const getStageScrapSum = (stageKey) => {
             const attrKey = stageKey.toLowerCase() + 'Scrap';
+            const getValue = (f) => f ? parseInt((f.manufacturingAttributes || {})[attrKey] || 0) : 0;
 
-            const getValue = (f) => {
-              if (!f) return 0;
-              const attr = f.manufacturingAttributes || {};
-              return parseInt(attr[attrKey] || 0);
-            };
-
-            const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
-
-            // Use a Set to track "seen" delta events to protect against clones and inherited duplicates
-            const seenEvents = new Set();
             let totalDelta = 0;
 
-            // Sort fragments by quantity descending to handle potential clones/updates properly
-            const sortedFragments = [...group.allFragments].sort((a, b) => getQty(b) - getQty(a));
-
-            sortedFragments.forEach(f => {
+            group.allFragments.forEach(f => {
               const currentVal = getValue(f);
-              const parent = f.parentProductId ? fragmentMap[f.parentProductId] : null;
-              const parentVal = getValue(parent);
               
-              const delta = Math.max(0, currentVal - parentVal);
-              
-              if (delta > 0) {
-                // Unique key based on stage, delta, and parent. 
-                // We REMOVED quantity because splits have different quantities but share inherited scrap.
-                const eventKey = `${stageKey}_${delta}_${f.parentProductId || 'root'}`;
-                
-                if (!seenEvents.has(eventKey)) {
-                  totalDelta += delta;
-                  seenEvents.add(eventKey);
-                }
+              // Dynamic Link Repair: If fragment lacks a parent, and is not the true root, 
+              // link it to the true root to prevent inherited scrap from being double-counted.
+              let parent = f.parentProductId ? fragmentMap[f.parentProductId] : null;
+              if (!parent && f.id !== trueRoot?.id) {
+                parent = trueRoot;
               }
+
+              const parentVal = getValue(parent);
+              const delta = Math.max(0, currentVal - parentVal);
+              totalDelta += delta;
             });
 
             return totalDelta;
@@ -139,9 +131,9 @@ const FinishedGoods = () => {
             const qty = parseInt(f.quantity || attr.quantity || 0);
 
             if (status === 'FINISHED_GOOD') {
-              // Ensure we don't double count clones by only counting "Leaf Nodes"
-              const hasChild = group.allFragments.some(child => child.parentProductId === f.id);
-              if (!hasChild) finalOutput += qty;
+              // Only count quantity if it's a leaf node to avoid double counting updates
+              const isLeaf = !group.allFragments.some(child => child.parentProductId === f.id);
+              if (isLeaf) finalOutput += qty;
             }
             if (qty > maxObservedQty) maxObservedQty = qty;
           });
