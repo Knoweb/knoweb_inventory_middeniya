@@ -100,36 +100,34 @@ const FinishedGoods = () => {
             };
 
             const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
-            const groupMaxQty = Math.max(...group.allFragments.map(getQty));
 
-            // 1. Calculate Deltas for all nodes that HAVE a parent in the group
-            let childDeltas = 0;
-            group.allFragments.forEach(f => {
-              if (f.parentProductId && fragmentMap[f.parentProductId]) {
-                const current = getValue(f);
-                const parentVal = getValue(fragmentMap[f.parentProductId]);
-                childDeltas += Math.max(0, current - parentVal);
+            // Use a Set to track "seen" delta events to protect against clones
+            const seenEvents = new Set();
+            let totalDelta = 0;
+
+            // Sort fragments by quantity descending to handle potential clones/updates properly
+            const sortedFragments = [...group.allFragments].sort((a, b) => getQty(b) - getQty(a));
+
+            sortedFragments.forEach(f => {
+              const currentVal = getValue(f);
+              const parent = f.parentProductId ? fragmentMap[f.parentProductId] : null;
+              const parentVal = getValue(parent);
+              
+              const delta = Math.max(0, currentVal - parentVal);
+              
+              if (delta > 0) {
+                // Create a unique key for this delta event to avoid double-counting clones
+                // A clone usually has the same parent, same stage, and same delta value.
+                const eventKey = `${stageKey}_${delta}_${f.parentProductId || 'root'}_${getQty(f)}`;
+                
+                if (!seenEvents.has(eventKey)) {
+                  totalDelta += delta;
+                  seenEvents.add(eventKey);
+                }
               }
             });
 
-            // 2. Handle Root Fragments (those with no parent in the group)
-            // We need to decide if multiple roots are clones (Max) or splits (Sum)
-            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
-            let rootBaseline = 0;
-            
-            if (roots.length > 0) {
-              const totalRootQty = roots.reduce((sum, r) => sum + getQty(r), 0);
-              
-              if (totalRootQty <= groupMaxQty * 1.1) {
-                // Independent branches: Sum their scraps
-                rootBaseline = roots.reduce((sum, r) => sum + getValue(r), 0);
-              } else {
-                // Overlapping clones: Take Max
-                rootBaseline = Math.max(...roots.map(r => getValue(r)));
-              }
-            }
-
-            return rootBaseline + childDeltas;
+            return totalDelta;
           };
 
           const moldingScrap = getStageScrapSum('MOLDING');
