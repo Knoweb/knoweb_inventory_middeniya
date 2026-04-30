@@ -17,24 +17,43 @@ const FinishedGoods = () => {
       const res = await manufacturingService.getByOrganization(orgId);
       const allData = Array.isArray(res.data) ? res.data : (res.data?.content || []);
       
-      const groupedMap = {};
-      const idToRootMap = {};
+      // 1. Union-Find (Disjoint Set Union) to group all related fragments
+      const parent = {};
+      const find = (i) => {
+        if (parent[i] === undefined || parent[i] === i) return i;
+        return parent[i] = find(parent[i]);
+      };
+      const union = (i, j) => {
+        const rootI = find(i);
+        const rootJ = find(j);
+        if (rootI !== rootJ) parent[rootI] = rootJ;
+      };
 
-      // 1. Build a mapping to find the ultimate root ID for any fragment
+      // Step A: Group by parent-child relationship
       allData.forEach(batch => {
-        idToRootMap[batch.id] = batch.parentProductId || batch.id;
+        if (batch.parentProductId) union(batch.id, batch.parentProductId);
       });
-      // Second pass to flatten the tree (simple 2-level flatten is usually enough)
+
+      // Step B: Group by Work Order and Batch Number strings
+      const attrMap = {};
       allData.forEach(batch => {
-        if (idToRootMap[batch.parentProductId]) {
-          idToRootMap[batch.id] = idToRootMap[batch.parentProductId];
+        const wo = batch.workOrderNumber;
+        const bn = batch.batchNumber ? String(batch.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim() : null;
+        
+        if (wo) {
+          if (!attrMap['WO_' + wo]) attrMap['WO_' + wo] = batch.id;
+          else union(batch.id, attrMap['WO_' + wo]);
+        }
+        if (bn) {
+          if (!attrMap['BN_' + bn]) attrMap['BN_' + bn] = batch.id;
+          else union(batch.id, attrMap['BN_' + bn]);
         }
       });
 
+      const groupedMap = {};
       allData.forEach(batch => {
+        const rootId = find(batch.id);
         const attr = batch.manufacturingAttributes || {};
-        // Group by the ultimate root ID to catch all fragments regardless of name changes
-        const rootId = idToRootMap[batch.id];
         
         if (!groupedMap[rootId]) {
           groupedMap[rootId] = {
