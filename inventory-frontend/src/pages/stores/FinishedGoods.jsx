@@ -99,33 +99,48 @@ const FinishedGoods = () => {
               return parseInt(attr[attrKey] || 0) + (extraKey ? parseInt(attr[extraKey] || 0) : 0);
             };
 
-            // 1. Handle Roots (fragments with no parent in this list)
-            // Group them by stripped Batch Number to identify truly independent branches
-            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
-            const rootsByBatch = {};
-            roots.forEach(r => {
-              const bn = r.batchNumber ? String(r.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim() : `ROOT-${r.id}`;
-              if (!rootsByBatch[bn]) rootsByBatch[bn] = [];
-              rootsByBatch[bn].push(r);
-            });
+            const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
 
-            // Baseline = Sum of Max values per independent batch line
-            let baseline = 0;
-            Object.values(rootsByBatch).forEach(batchRoots => {
-              baseline += Math.max(...batchRoots.map(r => getValue(r)));
-            });
-
-            // 2. Sum up all incremental deltas from every child record
-            let totalDeltas = 0;
+            // Group fragments by their parent ID
+            const childrenByParent = {};
             group.allFragments.forEach(f => {
-              if (f.parentProductId && fragmentMap[f.parentProductId]) {
-                const currentVal = getValue(f);
-                const parentVal = getValue(fragmentMap[f.parentProductId]);
-                totalDeltas += Math.max(0, currentVal - parentVal);
+              const pid = f.parentProductId || 'ROOT';
+              if (!childrenByParent[pid]) childrenByParent[pid] = [];
+              childrenByParent[pid].push(f);
+            });
+
+            let totalStageScrap = 0;
+
+            // Process each branch point
+            Object.keys(childrenByParent).forEach(pid => {
+              const siblings = childrenByParent[pid];
+              const parentQty = (pid !== 'ROOT' && fragmentMap[pid]) ? getQty(fragmentMap[pid]) : Math.max(...group.allFragments.map(getQty));
+              
+              // Mass Balance Check: Sum of sibling quantities
+              const totalSiblingQty = siblings.reduce((sum, s) => sum + getQty(s), 0);
+              
+              if (totalSiblingQty <= parentQty * 1.1) { // 10% tolerance for rounding/bad data
+                // Parallel Branches: Sum the unique increments
+                siblings.forEach(s => {
+                  const parentVal = (pid !== 'ROOT' && fragmentMap[pid]) ? getValue(fragmentMap[pid]) : 0;
+                  totalStageScrap += Math.max(0, getValue(s) - parentVal);
+                });
+              } else {
+                // Sequential/Clones: Take the Max increment
+                const maxChildVal = Math.max(...siblings.map(s => getValue(s)));
+                const parentVal = (pid !== 'ROOT' && fragmentMap[pid]) ? getValue(fragmentMap[pid]) : 0;
+                totalStageScrap += Math.max(0, maxChildVal - parentVal);
               }
             });
 
-            return baseline + totalDeltas;
+            // Add the initial baseline from the highest quantity root
+            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
+            if (roots.length > 0) {
+              const mainRoot = roots.reduce((prev, curr) => getQty(prev) >= getQty(curr) ? prev : curr);
+              totalStageScrap += getValue(mainRoot);
+            }
+
+            return totalStageScrap;
           };
 
           const moldingScrap = getStageScrapSum('MOLDING');
