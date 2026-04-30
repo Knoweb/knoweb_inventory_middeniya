@@ -86,28 +86,53 @@ const FinishedGoods = () => {
           let finalOutput = 0;
           let maxObservedQty = 0;
           
-          const getStageScrap = (stageKey) => {
-            // A. Sum of quantities of all fragments explicitly SCRAPPED in this stage
-            const scrappedFragmentsSum = group.allFragments
-              .filter(f => (f.wipStatus === 'SCRAPPED' || f.status === 'SCRAPPED') && 
-                           (f.manufacturingAttributes?.lastStage === stageKey || f.manufacturingAttributes?.sentToQcFrom === stageKey || f.manufacturingAttributes?.bornInStage === stageKey))
-              .reduce((sum, f) => sum + parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0), 0);
+          // Map fragments for parent lookup
+          const fragmentMap = {};
+          group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
+
+          const getStageDeltaSum = (stageKey) => {
+            let stageTotal = 0;
+            const attrKey = stageKey.toLowerCase() + 'Scrap';
             
-            // B. Max counter value found on any fragment (handles inherited counters)
-            // For Primary, we also check 'scrapRecorded' as seen in the database
-            const maxCounter = Math.max(0, ...group.allFragments.map(f => {
+            // To avoid double-counting inherited values from a missing parent
+            // we only treat the fragment with the LARGEST quantity as the "Original Root"
+            // if multiple fragments claim to have no parent in this list.
+            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
+            const mainRootId = roots.length > 0 
+              ? roots.reduce((prev, current) => (parseInt(prev.quantity || 0) > parseInt(current.quantity || 0)) ? prev : current).id 
+              : null;
+
+            group.allFragments.forEach(f => {
               const attr = f.manufacturingAttributes || {};
-              const val = parseInt(attr[stageKey.toLowerCase() + 'Scrap'] || 0);
-              const extra = (stageKey === 'PRIMARY') ? parseInt(attr['scrapRecorded'] || 0) : 0;
-              return val + extra;
-            }));
-            
-            return Math.max(scrappedFragmentsSum, maxCounter);
+              const currentVal = parseInt(attr[attrKey] || 0) + (stageKey === 'PRIMARY' ? parseInt(attr['scrapRecorded'] || 0) : 0);
+              
+              if (f.id === mainRootId) {
+                // Main root: Count the entire value
+                stageTotal += currentVal;
+              } else if (f.parentProductId && fragmentMap[f.parentProductId]) {
+                // Normal child: Count only the increase from its parent
+                const parentAttr = fragmentMap[f.parentProductId].manufacturingAttributes || {};
+                const parentVal = parseInt(parentAttr[attrKey] || 0) + (stageKey === 'PRIMARY' ? parseInt(parentAttr['scrapRecorded'] || 0) : 0);
+                stageTotal += Math.max(0, currentVal - parentVal);
+              } else if (!f.parentProductId || !fragmentMap[f.parentProductId]) {
+                // Parallel branch/split that happened before our data window:
+                // If it's NOT the main root, its initial value is likely inherited.
+                // We should only count its scrap if it has a SCRAPPED status.
+                const status = f.wipStatus || f.status;
+                if (status === 'SCRAPPED' && (attr.lastStage === stageKey || attr.sentToQcFrom === stageKey || attr.bornInStage === stageKey)) {
+                  // If the scrap counter is 0 but it's a scrapped fragment, use its quantity
+                  stageTotal += (currentVal > 0) ? 0 : parseInt(f.quantity || attr.quantity || 0);
+                }
+                // Any counter increase on this parallel branch? Hard to know without parent.
+                // But usually, deltas are captured in the children of this branch.
+              }
+            });
+            return stageTotal;
           };
 
-          const moldingScrap = getStageScrap('MOLDING');
-          const assembleScrap = getStageScrap('ASSEMBLE');
-          const primaryScrap = getStageScrap('PRIMARY');
+          const moldingScrap = getStageDeltaSum('MOLDING');
+          const assembleScrap = getStageDeltaSum('ASSEMBLE');
+          const primaryScrap = getStageDeltaSum('PRIMARY');
 
           group.allFragments.forEach(f => {
             const status = f.wipStatus || f.status;
@@ -119,9 +144,6 @@ const FinishedGoods = () => {
           });
 
           const totalScrap = moldingScrap + assembleScrap + primaryScrap;
-          
-          // Started Qty is the maximum quantity ever seen (usually the Molding start)
-          // But it must be at least Final Output + Total Scrap
           const startedQty = Math.max(maxObservedQty, finalOutput + totalScrap);
 
           return {
