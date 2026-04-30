@@ -84,56 +84,45 @@ const FinishedGoods = () => {
         .filter(group => group.hasFinishedGoods)
         .map(group => {
           let finalOutput = 0;
-          let moldingScrap = 0;
-          let assembleScrap = 0;
-          let primaryScrap = 0;
+          let maxObservedQty = 0;
+          
+          const getStageScrap = (stageKey) => {
+            // A. Sum of quantities of all fragments explicitly SCRAPPED in this stage
+            const scrappedFragmentsSum = group.allFragments
+              .filter(f => (f.wipStatus === 'SCRAPPED' || f.status === 'SCRAPPED') && 
+                           (f.manufacturingAttributes?.lastStage === stageKey || f.manufacturingAttributes?.sentToQcFrom === stageKey || f.manufacturingAttributes?.bornInStage === stageKey))
+              .reduce((sum, f) => sum + parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0), 0);
+            
+            // B. Max counter value found on any fragment (handles inherited counters)
+            // For Primary, we also check 'scrapRecorded' as seen in the database
+            const maxCounter = Math.max(0, ...group.allFragments.map(f => {
+              const attr = f.manufacturingAttributes || {};
+              const val = parseInt(attr[stageKey.toLowerCase() + 'Scrap'] || 0);
+              const extra = (stageKey === 'PRIMARY') ? parseInt(attr['scrapRecorded'] || 0) : 0;
+              return val + extra;
+            }));
+            
+            return Math.max(scrappedFragmentsSum, maxCounter);
+          };
 
-          const fragmentMap = {};
-          group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
+          const moldingScrap = getStageScrap('MOLDING');
+          const assembleScrap = getStageScrap('ASSEMBLE');
+          const primaryScrap = getStageScrap('PRIMARY');
 
           group.allFragments.forEach(f => {
             const status = f.wipStatus || f.status;
             const attr = f.manufacturingAttributes || {};
             const qty = parseInt(f.quantity || attr.quantity || 0);
 
-            if (status === 'FINISHED_GOOD') {
-              finalOutput += qty;
-            }
-
-            const getDelta = (key) => {
-              const current = parseInt(attr[key] || 0);
-              // Handle 'scrapRecorded' as an alias for primaryScrap
-              let extraCurrent = 0;
-              if (key === 'primaryScrap') {
-                extraCurrent = parseInt(attr['scrapRecorded'] || 0);
-              }
-
-              const parentVal = (f.parentProductId && fragmentMap[f.parentProductId]) 
-                ? parseInt(fragmentMap[f.parentProductId].manufacturingAttributes?.[key] || 0)
-                : 0;
-              
-              let extraParent = 0;
-              if (key === 'primaryScrap' && f.parentProductId && fragmentMap[f.parentProductId]) {
-                extraParent = parseInt(fragmentMap[f.parentProductId].manufacturingAttributes?.['scrapRecorded'] || 0);
-              }
-
-              return Math.max(0, (current + extraCurrent) - (parentVal + extraParent));
-            };
-
-            moldingScrap += getDelta('moldingScrap');
-            assembleScrap += getDelta('assembleScrap');
-            primaryScrap += getDelta('primaryScrap');
-            
-            if (status === 'SCRAPPED') {
-              const scrapStage = attr.lastStage || attr.sentToQcFrom;
-              if (scrapStage === 'MOLDING' && getDelta('moldingScrap') === 0) moldingScrap += qty;
-              else if (scrapStage === 'ASSEMBLE' && getDelta('assembleScrap') === 0) assembleScrap += qty;
-              else if (scrapStage === 'PRIMARY' && getDelta('primaryScrap') === 0) primaryScrap += qty;
-            }
+            if (status === 'FINISHED_GOOD') finalOutput += qty;
+            if (qty > maxObservedQty) maxObservedQty = qty;
           });
 
           const totalScrap = moldingScrap + assembleScrap + primaryScrap;
-          const startedQty = finalOutput + totalScrap;
+          
+          // Started Qty is the maximum quantity ever seen (usually the Molding start)
+          // But it must be at least Final Output + Total Scrap
+          const startedQty = Math.max(maxObservedQty, finalOutput + totalScrap);
 
           return {
             ...group,
