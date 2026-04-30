@@ -17,7 +17,7 @@ const FinishedGoods = () => {
       const res = await manufacturingService.getByOrganization(orgId);
       const allData = Array.isArray(res.data) ? res.data : (res.data?.content || []);
       
-      // 1. Union-Find (Disjoint Set Union) to group all related fragments
+      // 1. Enhanced Union-Find to group by ALL possible links
       const parent = {};
       const find = (i) => {
         if (parent[i] === undefined || parent[i] === i) return i;
@@ -29,25 +29,24 @@ const FinishedGoods = () => {
         if (rootI !== rootJ) parent[rootI] = rootJ;
       };
 
-      // Step A: Group by parent-child relationship
+      // Link by hierarchy (Parent/Root) and by IDs
       allData.forEach(batch => {
         if (batch.parentProductId) union(batch.id, batch.parentProductId);
+        if (batch.rootProductId) union(batch.id, batch.rootProductId);
       });
 
-      // Step B: Group by Work Order and Batch Number strings
-      const attrMap = {};
+      // Link by String Identifiers (Work Order and Batch)
+      const identifierMap = {};
       allData.forEach(batch => {
-        const wo = batch.workOrderNumber;
-        const bn = batch.batchNumber ? String(batch.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim() : null;
-        
-        if (wo) {
-          if (!attrMap['WO_' + wo]) attrMap['WO_' + wo] = batch.id;
-          else union(batch.id, attrMap['WO_' + wo]);
-        }
-        if (bn) {
-          if (!attrMap['BN_' + bn]) attrMap['BN_' + bn] = batch.id;
-          else union(batch.id, attrMap['BN_' + bn]);
-        }
+        const ids = [
+          batch.workOrderNumber ? `WO_${batch.workOrderNumber}` : null,
+          batch.batchNumber ? `BN_${String(batch.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim()}` : null
+        ].filter(Boolean);
+
+        ids.forEach(id => {
+          if (!identifierMap[id]) identifierMap[id] = batch.id;
+          else union(batch.id, identifierMap[id]);
+        });
       });
 
       const groupedMap = {};
@@ -58,13 +57,10 @@ const FinishedGoods = () => {
         if (!groupedMap[rootId]) {
           groupedMap[rootId] = {
             id: rootId,
-            baseNumber: batch.batchNumber || batch.workOrderNumber || `BATCH-${rootId}`,
-            workOrder: batch.workOrderNumber,
+            baseNumber: batch.workOrderNumber || batch.batchNumber || `WO-${rootId}`,
             itemName: attr.itemName || batch.itemName || 'Finished Component',
             updatedAt: batch.updatedAt || batch.createdAt,
-            finalOutput: 0,
             allFragments: [],
-            isFullyProcessed: true,
             hasFinishedGoods: false
           };
         }
@@ -72,54 +68,59 @@ const FinishedGoods = () => {
         const group = groupedMap[rootId];
         const status = batch.wipStatus || batch.status;
 
-        const isTerminalStatus = status === 'FINISHED_GOOD' || status === 'SCRAPPED';
-        if (!isTerminalStatus) group.isFullyProcessed = false;
         if (status === 'FINISHED_GOOD') group.hasFinishedGoods = true;
-
-        const fragmentQty = parseInt(batch.quantity || attr.quantity || 0);
-        if (status === 'FINISHED_GOOD') group.finalOutput += fragmentQty;
-
         group.allFragments.push(batch);
         
         const currentBatchDate = new Date(batch.updatedAt || batch.createdAt);
         const groupDate = new Date(group.updatedAt);
-        if (currentBatchDate > groupDate) group.updatedAt = batch.updatedAt || batch.createdAt;
+        if (currentBatchDate > groupDate) {
+          group.updatedAt = batch.updatedAt || batch.createdAt;
+          // Prefer Work Order for the title if available
+          if (batch.workOrderNumber) group.baseNumber = batch.workOrderNumber;
+        }
       });
 
       const aggregated = Object.values(groupedMap)
         .filter(group => group.hasFinishedGoods)
         .map(group => {
-          // 1. Calculate Final Output (Sum of FINISHED_GOOD quantities)
-          const finalOutput = group.finalOutput;
+          let finalOutput = 0;
+          let moldingScrap = 0;
+          let assembleScrap = 0;
+          let primaryScrap = 0;
 
-          // 2. Calculate Stage-Specific Scrap using the Unified Mass Balance Strategy
-          // This reconciling split fragments and counter updates perfectly.
-          const getStageScrap = (stageKey) => {
-            // A. Sum of quantities of all fragments explicitly SCRAPPED in this stage
-            const scrappedFragmentsSum = group.allFragments
-              .filter(f => (f.wipStatus === 'SCRAPPED' || f.status === 'SCRAPPED') && 
-                           (f.manufacturingAttributes?.lastStage === stageKey || f.manufacturingAttributes?.sentToQcFrom === stageKey))
-              .reduce((sum, f) => sum + parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0), 0);
+          const fragmentMap = {};
+          group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
+
+          group.allFragments.forEach(f => {
+            const status = f.wipStatus || f.status;
+            const attr = f.manufacturingAttributes || {};
+            const qty = parseInt(f.quantity || attr.quantity || 0);
+
+            if (status === 'FINISHED_GOOD') {
+              finalOutput += qty;
+            }
+
+            const getDelta = (key) => {
+              const current = parseInt(attr[key] || 0);
+              const parentVal = (f.parentProductId && fragmentMap[f.parentProductId]) 
+                ? parseInt(fragmentMap[f.parentProductId].manufacturingAttributes?.[key] || 0)
+                : 0;
+              return Math.max(0, current - parentVal);
+            };
+
+            moldingScrap += getDelta('moldingScrap');
+            assembleScrap += getDelta('assembleScrap');
+            primaryScrap += getDelta('primaryScrap');
             
-            // B. Max counter value found on any NON-SCRAPPED fragment (usually the Finished Good)
-            const maxFinishedCounter = Math.max(0, ...group.allFragments
-              .filter(f => f.wipStatus !== 'SCRAPPED' && f.status !== 'SCRAPPED')
-              .map(f => parseInt(f.manufacturingAttributes?.[stageKey.toLowerCase() + 'Scrap'] || 0)));
-            
-            // The truth: Scrapped fragments are the primary source. 
-            // We only add anything from the counter if it's GREATER than the fragments we found.
-            // This prevents double counting inherited values during splits.
-            return scrappedFragmentsSum + Math.max(0, maxFinishedCounter - scrappedFragmentsSum);
-          };
+            if (status === 'SCRAPPED') {
+              const scrapStage = attr.lastStage || attr.sentToQcFrom;
+              if (scrapStage === 'MOLDING' && getDelta('moldingScrap') === 0) moldingScrap += qty;
+              else if (scrapStage === 'ASSEMBLE' && getDelta('assembleScrap') === 0) assembleScrap += qty;
+              else if (scrapStage === 'PRIMARY' && getDelta('primaryScrap') === 0) primaryScrap += qty;
+            }
+          });
 
-          const moldingScrap = getStageScrap('MOLDING');
-          const assembleScrap = getStageScrap('ASSEMBLE');
-          const primaryScrap = getStageScrap('PRIMARY');
-
-          // 3. Total Scrap = Sum of stage scraps
           const totalScrap = moldingScrap + assembleScrap + primaryScrap;
-
-          // 4. Started Qty = Final Output + Total Scrap
           const startedQty = finalOutput + totalScrap;
 
           return {
