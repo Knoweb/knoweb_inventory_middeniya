@@ -102,10 +102,22 @@ const FinishedGoods = () => {
 
             const getDelta = (key) => {
               const current = parseInt(attr[key] || 0);
+              // Handle 'scrapRecorded' as an alias for primaryScrap
+              let extraCurrent = 0;
+              if (key === 'primaryScrap') {
+                extraCurrent = parseInt(attr['scrapRecorded'] || 0);
+              }
+
               const parentVal = (f.parentProductId && fragmentMap[f.parentProductId]) 
                 ? parseInt(fragmentMap[f.parentProductId].manufacturingAttributes?.[key] || 0)
                 : 0;
-              return Math.max(0, current - parentVal);
+              
+              let extraParent = 0;
+              if (key === 'primaryScrap' && f.parentProductId && fragmentMap[f.parentProductId]) {
+                extraParent = parseInt(fragmentMap[f.parentProductId].manufacturingAttributes?.['scrapRecorded'] || 0);
+              }
+
+              return Math.max(0, (current + extraCurrent) - (parentVal + extraParent));
             };
 
             moldingScrap += getDelta('moldingScrap');
