@@ -100,56 +100,40 @@ const FinishedGoods = () => {
             };
 
             const getQty = (f) => parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0);
+            const groupMaxQty = Math.max(...group.allFragments.map(getQty));
 
-            // Group fragments by their parent ID
-            const childrenByParent = {};
-            group.allFragments.forEach(f => {
-              const pid = f.parentProductId || 'ROOT';
-              if (!childrenByParent[pid]) childrenByParent[pid] = [];
-              childrenByParent[pid].push(f);
+            // 1. Identify "Roots" (fragments with no parent in this list)
+            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
+            
+            // 2. Sum the values of roots, but check for "clones" (sequential updates with missing parents)
+            // If the sum of root quantities exceeds the max batch quantity significantly, they are clones.
+            let baseline = 0;
+            const sortedRoots = [...roots].sort((a, b) => getQty(b) - getQty(a));
+            let currentRootSum = 0;
+            
+            sortedRoots.forEach(r => {
+              if (currentRootSum + getQty(r) <= groupMaxQty * 1.1) {
+                baseline += getValue(r);
+                currentRootSum += getQty(r);
+              } else if (currentRootSum === 0) {
+                // If it's the first one and it's already large, it's our primary baseline
+                baseline = getValue(r);
+                currentRootSum = getQty(r);
+              }
+              // Otherwise it's likely a smaller clone/fragment of an already counted baseline
             });
 
-            let totalStageScrap = 0;
-
-            // 1. Process each branch point to capture new deltas
-            Object.keys(childrenByParent).forEach(pid => {
-              if (pid === 'ROOT') return; // Roots handled separately
-              
-              const siblings = childrenByParent[pid];
-              const parentFragment = fragmentMap[pid];
-              const parentQty = getQty(parentFragment);
-              const parentVal = getValue(parentFragment);
-              
-              const totalSiblingQty = siblings.reduce((sum, s) => sum + getQty(s), 0);
-              
-              // If sibling quantities don't exceed parent, they are independent branches
-              if (totalSiblingQty <= parentQty * 1.1) {
-                siblings.forEach(s => {
-                  totalStageScrap += Math.max(0, getValue(s) - parentVal);
-                });
-              } else {
-                // If they overlap significantly, they are likely sequential/clones
-                const maxChildVal = Math.max(...siblings.map(s => getValue(s)));
-                totalStageScrap += Math.max(0, maxChildVal - parentVal);
+            // 3. Add all deltas from child fragments
+            let deltas = 0;
+            group.allFragments.forEach(f => {
+              if (f.parentProductId && fragmentMap[f.parentProductId]) {
+                const currentVal = getValue(f);
+                const parentVal = getValue(fragmentMap[f.parentProductId]);
+                deltas += Math.max(0, currentVal - parentVal);
               }
             });
 
-            // 2. Add the baseline from all root fragments
-            // We group roots by stripped batch number to identify independent start points
-            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
-            const rootsByBatch = {};
-            roots.forEach(r => {
-              const bn = r.batchNumber ? String(r.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim() : `ROOT-${r.id}`;
-              if (!rootsByBatch[bn]) rootsByBatch[bn] = [];
-              rootsByBatch[bn].push(r);
-            });
-
-            Object.values(rootsByBatch).forEach(batchRoots => {
-              // Within each root-batch line, we take the max to avoid double counting clones
-              totalStageScrap += Math.max(...batchRoots.map(r => getValue(r)));
-            });
-
-            return totalStageScrap;
+            return baseline + deltas;
           };
 
           const moldingScrap = getStageScrapSum('MOLDING');
