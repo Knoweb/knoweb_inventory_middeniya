@@ -92,38 +92,31 @@ const FinishedGoods = () => {
           // 1. Calculate Final Output (Sum of FINISHED_GOOD quantities)
           const finalOutput = group.finalOutput;
 
-          // 2. Calculate Stage-Specific Scrap using the Delta Summation Strategy
-          // This only counts the INCREMENTAL scrap at each step of the split tree.
-          const fragmentMap = {};
-          group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
-
-          const getStageDeltaSum = (stageKey) => {
-            let totalDelta = 0;
-            const attrKey = stageKey.toLowerCase() + 'Scrap';
+          // 2. Calculate Stage-Specific Scrap using the Unified Mass Balance Strategy
+          // This reconciling split fragments and counter updates perfectly.
+          const getStageScrap = (stageKey) => {
+            // A. Sum of quantities of all fragments explicitly SCRAPPED in this stage
+            const scrappedFragmentsSum = group.allFragments
+              .filter(f => (f.wipStatus === 'SCRAPPED' || f.status === 'SCRAPPED') && 
+                           (f.manufacturingAttributes?.lastStage === stageKey || f.manufacturingAttributes?.sentToQcFrom === stageKey))
+              .reduce((sum, f) => sum + parseInt(f.quantity || f.manufacturingAttributes?.quantity || 0), 0);
             
-            group.allFragments.forEach(f => {
-              const attr = f.manufacturingAttributes || {};
-              const currentVal = parseInt(attr[attrKey] || 0);
-              
-              // If it's a root (no parent in this group), the entire value is a delta
-              if (!f.parentProductId || !fragmentMap[f.parentProductId]) {
-                totalDelta += currentVal;
-              } else {
-                // If it has a parent, only count the INCREASE from the parent
-                const parentAttr = fragmentMap[f.parentProductId].manufacturingAttributes || {};
-                const parentVal = parseInt(parentAttr[attrKey] || 0);
-                const delta = Math.max(0, currentVal - parentVal);
-                totalDelta += delta;
-              }
-            });
-            return totalDelta;
+            // B. Max counter value found on any NON-SCRAPPED fragment (usually the Finished Good)
+            const maxFinishedCounter = Math.max(0, ...group.allFragments
+              .filter(f => f.wipStatus !== 'SCRAPPED' && f.status !== 'SCRAPPED')
+              .map(f => parseInt(f.manufacturingAttributes?.[stageKey.toLowerCase() + 'Scrap'] || 0)));
+            
+            // The truth: Scrapped fragments are the primary source. 
+            // We only add anything from the counter if it's GREATER than the fragments we found.
+            // This prevents double counting inherited values during splits.
+            return scrappedFragmentsSum + Math.max(0, maxFinishedCounter - scrappedFragmentsSum);
           };
 
-          const moldingScrap = getStageDeltaSum('MOLDING');
-          const assembleScrap = getStageDeltaSum('ASSEMBLE');
-          const primaryScrap = getStageDeltaSum('PRIMARY');
+          const moldingScrap = getStageScrap('MOLDING');
+          const assembleScrap = getStageScrap('ASSEMBLE');
+          const primaryScrap = getStageScrap('PRIMARY');
 
-          // 3. Total Scrap = Sum of calculated stage deltas
+          // 3. Total Scrap = Sum of stage scraps
           const totalScrap = moldingScrap + assembleScrap + primaryScrap;
 
           // 4. Started Qty = Final Output + Total Scrap
