@@ -99,26 +99,21 @@ const FinishedGoods = () => {
               return parseInt(attr[attrKey] || 0) + (extraKey ? parseInt(attr[extraKey] || 0) : 0);
             };
 
-            // Group fragments by their parent ID
-            const childrenByParent = {};
+            // 1. Get the baseline from the maximum value among all roots (fragments with no parent in this list)
+            const roots = group.allFragments.filter(f => !f.parentProductId || !fragmentMap[f.parentProductId]);
+            const baseline = roots.length > 0 ? Math.max(...roots.map(r => getValue(r))) : 0;
+
+            // 2. Sum up all incremental deltas from every child record
+            let totalDeltas = 0;
             group.allFragments.forEach(f => {
-              const pid = f.parentProductId || 'ROOT';
-              if (!childrenByParent[pid]) childrenByParent[pid] = [];
-              childrenByParent[pid].push(f);
+              if (f.parentProductId && fragmentMap[f.parentProductId]) {
+                const currentVal = getValue(f);
+                const parentVal = getValue(fragmentMap[f.parentProductId]);
+                totalDeltas += Math.max(0, currentVal - parentVal);
+              }
             });
 
-            let totalStageDelta = 0;
-
-            // For each set of siblings, the delta is (Max child value - parent value)
-            Object.keys(childrenByParent).forEach(pid => {
-              const siblings = childrenByParent[pid];
-              const maxChildVal = Math.max(...siblings.map(s => getValue(s)));
-              const parentVal = (pid !== 'ROOT' && fragmentMap[pid]) ? getValue(fragmentMap[pid]) : 0;
-              
-              totalStageDelta += Math.max(0, maxChildVal - parentVal);
-            });
-
-            return totalStageDelta;
+            return baseline + totalDeltas;
           };
 
           const moldingScrap = getStageScrapSum('MOLDING');
