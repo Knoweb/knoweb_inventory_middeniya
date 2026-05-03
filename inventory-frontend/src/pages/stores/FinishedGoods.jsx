@@ -51,20 +51,6 @@ const FinishedGoods = () => {
         const latestRecord = sortedRecords[sortedRecords.length - 1];
         const latestAttr = latestRecord.manufacturingAttributes || {};
 
-        // Started Qty should come from the ORIGINAL WIP_MOLDING record (first record chronologically)
-        // This is the only record that truly represents what was "started"
-        const firstRecord = sortedRecords[0];
-        const firstAttr = firstRecord?.manufacturingAttributes || {};
-        
-        // The original started quantity is in the FIRST record's quantity field
-        // (this is what was sent to molding)
-        let startedQty = parseInt(firstRecord?.quantity || firstAttr?.quantity || 0);
-        
-        // If the first record has moldingPassedQty and it's from the original WIP_MOLDING, use that
-        if (!startedQty && firstAttr?.moldingPassedQty) {
-          startedQty = parseInt(firstAttr.moldingPassedQty);
-        }
-
         // Final Output = quantity from the LATEST record (what we ended with)
         const finalQuantity = parseInt(latestRecord.quantity || latestAttr.quantity || 0);
 
@@ -73,6 +59,23 @@ const FinishedGoods = () => {
         const assembleScrap = parseInt(latestAttr.assembleScrap || 0);
         const primaryScrap = parseInt(latestAttr.primaryScrap || 0);
         const totalScrap = moldingScrap + assembleScrap + primaryScrap;
+
+        // Started Qty = the ORIGINAL quantity from the FIRST WIP_MOLDING record
+        // Search for the record that has wipStatus WIP_MOLDING (the origin record)
+        let startedQty = 0;
+        for (const record of sortedRecords) {
+          if (record.wipStatus === 'WIP_MOLDING' || record.wipStatus === 'INJECTION_MOLDING') {
+            // This is the original molding record - get its quantity
+            startedQty = parseInt(record.quantity || record.manufacturingAttributes?.quantity || 0);
+            if (startedQty > 0) break; // Found it
+          }
+        }
+        
+        // Fallback: if no WIP_MOLDING record, use first record's quantity
+        if (startedQty === 0 && sortedRecords.length > 0) {
+          const firstRecord = sortedRecords[0];
+          startedQty = parseInt(firstRecord.quantity || firstRecord.manufacturingAttributes?.quantity || 0);
+        }
 
         finishedGoodsList.push({
           id: finishedRecord.id,
