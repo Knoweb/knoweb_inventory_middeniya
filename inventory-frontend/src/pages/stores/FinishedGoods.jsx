@@ -47,38 +47,13 @@ const FinishedGoods = () => {
         
         if (!finishedRecord) return; // Skip if no finished good in this batch
 
-        // Get the FIRST Molding record to find the original started quantity
-        const moldingRecord = sortedRecords.find(r => r.wipStatus === 'WIP_MOLDING' || r.wipStatus === 'INJECTION_MOLDING');
-        const moldingAttr = moldingRecord?.manufacturingAttributes || {};
-        
-        // Started Qty = quantity from the molding creation (what we started with)
-        // Priority: Molding record's quantity field > Molding attributes.quantity > First record quantity > 0
-        let startedQty = 0;
-        
-        if (moldingRecord) {
-          startedQty = parseInt(
-            moldingRecord?.quantity ||
-            moldingAttr?.quantity ||
-            moldingAttr?.startedQty ||
-            0
-          );
-        }
-        
-        // Fallback: If no molding record found, use first record
-        if (startedQty === 0 && sortedRecords.length > 0) {
-          const firstRecord = sortedRecords[0];
-          const firstAttr = firstRecord?.manufacturingAttributes || {};
-          startedQty = parseInt(
-            firstRecord?.quantity ||
-            firstAttr?.quantity ||
-            firstAttr?.startedQty ||
-            0
-          );
-        }
-        
         // Get the LATEST record in the sequence for final output and scrap values
         const latestRecord = sortedRecords[sortedRecords.length - 1];
         const latestAttr = latestRecord.manufacturingAttributes || {};
+
+        // Started Qty = moldingPassedQty (quantity that LEFT the Molding stage to enter Assembly)
+        // This is preserved through all stages in the manufacturingAttributes
+        const startedQty = parseInt(latestAttr.moldingPassedQty || 0);
 
         // Final Output = quantity from the LATEST record (what we ended with)
         const finalQuantity = parseInt(latestRecord.quantity || latestAttr.quantity || 0);
