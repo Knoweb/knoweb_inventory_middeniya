@@ -42,31 +42,55 @@ const FinishedGoods = () => {
           return dateA - dateB;
         });
 
-        // Check if any record in the group is marked as FINISHED_GOOD
-        const finishedRecord = sortedRecords.find(r => r.wipStatus === 'FINISHED_GOOD' || r.status === 'FINISHED_GOOD');
+        // Check if there are any finished goods in this group
+        const finishedRecords = sortedRecords.filter(r => r.wipStatus === 'FINISHED_GOOD' || r.status === 'FINISHED_GOOD');
+        if (finishedRecords.length === 0) return; // Skip if no finished goods
         
-        if (!finishedRecord) return; // Skip if no finished good in this batch
+        // --- Aggregate statistics for the ENTIRE Work Order / Batch Group ---
+        let finalQuantity = 0;
+        let startedQty = 0;
+        let moldingScrap = 0;
+        let assembleScrap = 0;
+        let primaryScrap = 0;
+        
+        // 1. Total Final Output = SUM of all finished goods in this work order group
+        finishedRecords.forEach(fr => {
+          finalQuantity += parseInt(fr.quantity || fr.manufacturingAttributes?.quantity || 0);
+        });
 
-        // Get the FINISHED record's attributes (the actual batch we're displaying)
+        // 2. True Started Qty = Sum of passing and scrap at the MOLDING stage (the root of the batch)
+        // We only sum from branches that were born in MOLDING or not split (the root branches)
+        sortedRecords.forEach(r => {
+          const attr = r.manufacturingAttributes || {};
+          
+          if (!attr.bornInStage || attr.bornInStage === 'MOLDING') {
+            startedQty += parseInt(attr.moldingPassedQty || 0) + parseInt(attr.moldingScrap || 0);
+            moldingScrap += parseInt(attr.moldingScrap || 0);
+          }
+          if (attr.bornInStage === 'ASSEMBLE') {
+            assembleScrap += parseInt(attr.assembleScrap || attr.quantity || 0);
+          }
+          if (attr.bornInStage === 'PRIMARY') {
+            primaryScrap += parseInt(attr.primaryScrap || attr.quantity || 0);
+          }
+        });
+        
+        // If calculation didn't yield a reliable start qty, fallback:
+        if (startedQty === 0) {
+          startedQty = finalQuantity + moldingScrap + assembleScrap + primaryScrap;
+        }
+        
+        // 3. Calculate mathematically perfect Total Scrap across all stages
+        // Started Qty = Final Output + Total Scrap
+        let totalScrap = startedQty > finalQuantity ? (startedQty - finalQuantity) : (moldingScrap + assembleScrap + primaryScrap);
+
+        // Get base metadata from the first finished record in the group
+        const finishedRecord = finishedRecords[0];
         const finishedAttr = finishedRecord.manufacturingAttributes || {};
-
-        // Get the LATEST record in the sequence for any additional data
+        
+        // Get the LATEST record in the sequence for any final metadata updating
         const latestRecord = sortedRecords[sortedRecords.length - 1];
         const latestAttr = latestRecord.manufacturingAttributes || {};
-
-        // Final Output = quantity from the FINISHED record
-        const finalQuantity = parseInt(finishedRecord.quantity || finishedAttr.quantity || 0);
-
-        // Extract scrap values from the FINISHED record (these should be accurate for this batch)
-        const moldingScrap = parseInt(finishedAttr.moldingScrap || 0);
-        const assembleScrap = parseInt(finishedAttr.assembleScrap || 0);
-        const primaryScrap = parseInt(finishedAttr.primaryScrap || 0);
-        const totalScrap = moldingScrap + assembleScrap + primaryScrap;
-
-        // Started Qty = moldingPassedQty + moldingScrap
-        // This represents: (qty that passed molding) + (qty lost to molding scrap) = original started qty
-        const moldingPassedQty = parseInt(finishedAttr.moldingPassedQty || 0);
-        const startedQty = moldingPassedQty + moldingScrap;
 
         finishedGoodsList.push({
           id: finishedRecord.id,
