@@ -62,8 +62,6 @@ const FinishedGoods = () => {
 
         // Started Qty = moldingPassedQty + moldingScrap
         // This represents: (qty that passed molding) + (qty lost to molding scrap) = original started qty
-        // moldingPassedQty is preserved through all stages and represents input to assembly
-        const moldingScrap = parseInt(latestAttr.moldingScrap || 0);
         const moldingPassedQty = parseInt(latestAttr.moldingPassedQty || 0);
         const startedQty = moldingPassedQty + moldingScrap;
 
