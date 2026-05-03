@@ -47,24 +47,28 @@ const FinishedGoods = () => {
         
         if (!finishedRecord) return; // Skip if no finished good in this batch
 
-        // Get the final/latest record in the sequence
+        // Get the FIRST record (original) and LATEST record in the sequence
+        const firstRecord = sortedRecords[0];
         const latestRecord = sortedRecords[sortedRecords.length - 1];
-        const attr = latestRecord.manufacturingAttributes || {};
+        const firstAttr = firstRecord.manufacturingAttributes || {};
+        const latestAttr = latestRecord.manufacturingAttributes || {};
+
+        // Started Qty = quantity from the FIRST record (what we started with)
+        const startedQty = parseInt(firstRecord.quantity || firstAttr.quantity || 0);
+        
+        // Final Output = quantity from the LATEST record (what we ended with)
+        const finalQuantity = parseInt(latestRecord.quantity || latestAttr.quantity || 0);
 
         // Extract scrap values from the final record (these should have accumulated values)
-        const moldingScrap = parseInt(attr.moldingScrap || 0);
-        const assembleScrap = parseInt(attr.assembleScrap || 0);
-        const primaryScrap = parseInt(attr.primaryScrap || 0);
-        const finalQuantity = parseInt(latestRecord.quantity || attr.quantity || 0);
-
-        // Calculate started quantity: finalQuantity + total scrap accumulated
+        const moldingScrap = parseInt(latestAttr.moldingScrap || 0);
+        const assembleScrap = parseInt(latestAttr.assembleScrap || 0);
+        const primaryScrap = parseInt(latestAttr.primaryScrap || 0);
         const totalScrap = moldingScrap + assembleScrap + primaryScrap;
-        const startedQty = finalQuantity + totalScrap;
 
         finishedGoodsList.push({
           id: finishedRecord.id,
           baseNumber: finishedRecord.workOrderNumber || finishedRecord.batchNumber || `BATCH-${finishedRecord.id}`,
-          itemName: attr.itemName || finishedRecord.itemName || 'Finished Component',
+          itemName: latestAttr.itemName || finishedRecord.itemName || firstAttr.itemName || 'Finished Component',
           finalOutput: finalQuantity,
           moldingScrap,
           assembleScrap,
