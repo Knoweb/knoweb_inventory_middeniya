@@ -47,22 +47,29 @@ const FinishedGoods = () => {
         if (finishedRecords.length === 0) return; // Skip if no finished goods
         
         // --- Aggregate statistics for the ENTIRE Work Order / Batch Group ---
+        // VERY IMPORTANT: Deduplicate records by branch (batchNumber) so we don't count the same branch's scrap attributes multiple times as it moves through its history stages!
+        const latestPerBranch = {};
+        sortedRecords.forEach(r => {
+            const branchId = r.batchNumber || r.id; // fallback to id
+            latestPerBranch[branchId] = r; // Overwrites older records, leaving only the newest state for each branch
+        });
+
         let finalQuantity = 0;
         let startedQty = 0;
         let moldingScrap = 0;
         let assembleScrap = 0;
         let primaryScrap = 0;
         
-        // 1. Total Final Output = SUM of all finished goods in this work order group
-        finishedRecords.forEach(fr => {
-          finalQuantity += parseInt(fr.quantity || fr.manufacturingAttributes?.quantity || 0);
-        });
-
-        // 2. True Started Qty = Sum of passing and scrap at the MOLDING stage (the root of the batch)
-        // We only sum from branches that were born in MOLDING or not split (the root branches)
-        sortedRecords.forEach(r => {
+        // Now calculate sums using only the UNIQUE latest state of each split branch
+        Object.values(latestPerBranch).forEach(r => {
           const attr = r.manufacturingAttributes || {};
+
+          // 1. Total Final Output
+          if (r.wipStatus === 'FINISHED_GOOD' || r.status === 'FINISHED_GOOD') {
+            finalQuantity += parseInt(r.quantity || attr.quantity || 0);
+          }
           
+          // 2. True Started Qty = Sum of passing and scrap at the MOLDING stage (the root of the batch)
           if (!attr.bornInStage || attr.bornInStage === 'MOLDING') {
             startedQty += parseInt(attr.moldingPassedQty || 0) + parseInt(attr.moldingScrap || 0);
           }
