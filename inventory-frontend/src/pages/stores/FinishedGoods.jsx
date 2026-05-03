@@ -89,35 +89,59 @@ const FinishedGoods = () => {
           const fragmentMap = {};
           group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
 
-          // Find the true root (earliest created fragment in the group)
-          const sortedByDate = [...group.allFragments].sort((a, b) => {
+          const getValueRaw = (f, sk) => f ? parseInt((f.manufacturingAttributes || {})[sk] || 0) : 0;
+
+          // Sort fragments chronologically to reconstruct the timeline
+          const sortedFragments = [...group.allFragments].sort((a, b) => {
             const dateA = new Date(a.createdAt || a.created_at || a.updatedAt || 0);
             const dateB = new Date(b.createdAt || b.created_at || b.updatedAt || 0);
             return dateA - dateB;
           });
-          const trueRoot = sortedByDate[0];
+
+          // Logical Parent Resolution: Reconstruct the true manufacturing tree
+          const resolvedParents = {}; // f.id -> true parent fragment
+          
+          sortedFragments.forEach((f, index) => {
+            if (f.parentProductId && fragmentMap[f.parentProductId]) {
+              resolvedParents[f.id] = fragmentMap[f.parentProductId];
+            } else {
+              // Find the logical parent by looking backwards in time.
+              // A valid parent MUST have scrap values <= the current fragment's values.
+              // If a candidate has higher scrap, it means 'f' branched off BEFORE that candidate.
+              let logicalParent = null;
+              
+              const m_f = getValueRaw(f, 'moldingScrap');
+              const a_f = getValueRaw(f, 'assembleScrap');
+              const p_f = getValueRaw(f, 'primaryScrap');
+
+              for (let i = index - 1; i >= 0; i--) {
+                const candidate = sortedFragments[i];
+                const m_c = getValueRaw(candidate, 'moldingScrap');
+                const a_c = getValueRaw(candidate, 'assembleScrap');
+                const p_c = getValueRaw(candidate, 'primaryScrap');
+
+                if (m_c <= m_f && a_c <= a_f && p_c <= p_f) {
+                  logicalParent = candidate;
+                  break; // Found the most recent valid ancestor
+                }
+              }
+              resolvedParents[f.id] = logicalParent;
+            }
+          });
 
           const getStageScrapSum = (stageKey) => {
             const attrKey = stageKey.toLowerCase() + 'Scrap';
             const getValue = (f) => f ? parseInt((f.manufacturingAttributes || {})[attrKey] || 0) : 0;
 
             let totalDelta = 0;
-
-            group.allFragments.forEach(f => {
+            sortedFragments.forEach(f => {
               const currentVal = getValue(f);
-              
-              // Dynamic Link Repair: If fragment lacks a parent, and is not the true root, 
-              // link it to the true root to prevent inherited scrap from being double-counted.
-              let parent = f.parentProductId ? fragmentMap[f.parentProductId] : null;
-              if (!parent && f.id !== trueRoot?.id) {
-                parent = trueRoot;
-              }
-
+              const parent = resolvedParents[f.id];
               const parentVal = getValue(parent);
+              
               const delta = Math.max(0, currentVal - parentVal);
               totalDelta += delta;
             });
-
             return totalDelta;
           };
 
