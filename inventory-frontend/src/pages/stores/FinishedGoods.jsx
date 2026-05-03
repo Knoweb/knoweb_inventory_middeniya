@@ -51,19 +51,23 @@ const FinishedGoods = () => {
         const latestRecord = sortedRecords[sortedRecords.length - 1];
         const latestAttr = latestRecord.manufacturingAttributes || {};
 
-        // Started Qty = moldingPassedQty from ANY record that completed Molding
-        // Look for the record with moldingCompleted: true as it has the accurate moldingPassedQty
+        // Started Qty = moldingPassedQty from the ORIGINAL Molding batch (not QC/scrap splits)
+        // When batches split, both good and scrap parts have moldingCompleted: true
+        // But only the GOOD batch has isRecovered: false/null (scrap records have isRecovered: true)
         let startedQty = 0;
         for (const record of sortedRecords) {
           const attrs = record.manufacturingAttributes || {};
-          if (attrs.moldingCompleted === true && attrs.moldingPassedQty) {
+          // Skip QC/recovered records (scrap batches created during splits)
+          const isQcRecord = attrs.isRecovered === true;
+          
+          if (attrs.moldingCompleted === true && attrs.moldingPassedQty && !isQcRecord) {
             startedQty = parseInt(attrs.moldingPassedQty);
             break;
           }
         }
         
-        // Fallback: use latest record's moldingPassedQty if found
-        if (startedQty === 0 && latestAttr.moldingPassedQty) {
+        // Fallback: use latest record's moldingPassedQty if found (and not a QC record)
+        if (startedQty === 0 && latestAttr.moldingPassedQty && latestAttr.isRecovered !== true) {
           startedQty = parseInt(latestAttr.moldingPassedQty);
         }
 
