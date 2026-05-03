@@ -60,24 +60,12 @@ const FinishedGoods = () => {
         const primaryScrap = parseInt(latestAttr.primaryScrap || 0);
         const totalScrap = moldingScrap + assembleScrap + primaryScrap;
 
-        // Started Qty = moldingPassedQty (quantity that LEFT the molding stage)
-        // This is the true starting quantity for the main batch path
-        // Search through ALL records in the batch to find the one with moldingPassedQty
-        // If batch was split (QC branches), find the LARGEST moldingPassedQty (main path)
-        let startedQty = 0;
-        for (const record of sortedRecords) {
-          const attrs = record.manufacturingAttributes || {};
-          const moldQty = parseInt(attrs.moldingPassedQty || 0);
-          if (moldQty > startedQty) {
-            startedQty = moldQty;
-          }
-        }
-        
-        // Fallback: if no moldingPassedQty found, calculate from first record
-        if (startedQty === 0) {
-          const firstRecord = sortedRecords[0];
-          startedQty = parseInt(firstRecord.quantity || firstRecord.manufacturingAttributes?.quantity || 0);
-        }
+        // Started Qty = moldingPassedQty + moldingScrap
+        // This represents: (qty that passed molding) + (qty lost to molding scrap) = original started qty
+        // moldingPassedQty is preserved through all stages and represents input to assembly
+        const moldingScrap = parseInt(latestAttr.moldingScrap || 0);
+        const moldingPassedQty = parseInt(latestAttr.moldingPassedQty || 0);
+        const startedQty = moldingPassedQty + moldingScrap;
 
         finishedGoodsList.push({
           id: finishedRecord.id,
