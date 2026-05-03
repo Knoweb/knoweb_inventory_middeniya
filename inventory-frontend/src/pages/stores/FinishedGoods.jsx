@@ -47,15 +47,17 @@ const FinishedGoods = () => {
         
         if (!finishedRecord) return; // Skip if no finished good in this batch
 
-        // Get the FIRST record (original) and LATEST record in the sequence
-        const firstRecord = sortedRecords[0];
+        // Get the FIRST Molding record to get the original started quantity
+        const moldingRecord = sortedRecords.find(r => r.wipStatus === 'WIP_MOLDING');
+        const moldingAttr = moldingRecord?.manufacturingAttributes || {};
+        
+        // Started Qty = quantity from the original Molding creation (what we started with)
+        const startedQty = parseInt(moldingRecord?.quantity || moldingAttr.quantity || 0);
+        
+        // Get the LATEST record in the sequence for final output and scrap values
         const latestRecord = sortedRecords[sortedRecords.length - 1];
-        const firstAttr = firstRecord.manufacturingAttributes || {};
         const latestAttr = latestRecord.manufacturingAttributes || {};
 
-        // Started Qty = quantity from the FIRST record (what we started with)
-        const startedQty = parseInt(firstRecord.quantity || firstAttr.quantity || 0);
-        
         // Final Output = quantity from the LATEST record (what we ended with)
         const finalQuantity = parseInt(latestRecord.quantity || latestAttr.quantity || 0);
 
@@ -68,7 +70,7 @@ const FinishedGoods = () => {
         finishedGoodsList.push({
           id: finishedRecord.id,
           baseNumber: finishedRecord.workOrderNumber || finishedRecord.batchNumber || `BATCH-${finishedRecord.id}`,
-          itemName: latestAttr.itemName || finishedRecord.itemName || firstAttr.itemName || 'Finished Component',
+          itemName: latestAttr.itemName || finishedRecord.itemName || moldingAttr.itemName || 'Finished Component',
           finalOutput: finalQuantity,
           moldingScrap,
           assembleScrap,
