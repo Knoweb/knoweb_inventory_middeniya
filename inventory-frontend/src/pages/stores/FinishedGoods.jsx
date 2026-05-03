@@ -65,14 +65,17 @@ const FinishedGoods = () => {
           
           if (!attr.bornInStage || attr.bornInStage === 'MOLDING') {
             startedQty += parseInt(attr.moldingPassedQty || 0) + parseInt(attr.moldingScrap || 0);
-            moldingScrap += parseInt(attr.moldingScrap || 0);
           }
-          if (attr.bornInStage === 'ASSEMBLE') {
-            assembleScrap += parseInt(attr.assembleScrap || attr.quantity || 0);
-          }
-          if (attr.bornInStage === 'PRIMARY') {
-            primaryScrap += parseInt(attr.primaryScrap || attr.quantity || 0);
-          }
+
+          // Scrap can happen in any branch regardless of where it was born.
+          // Sum up explicit scrap values. If it's a pure scrap branch without explicit attributes, fallback to its quantity.
+          const isMoldingScrapBranch = (r.wipStatus || '').includes('MOLDING_SCRAP') || (r.status || '').includes('MOLDING_SCRAP');
+          const isAssembleScrapBranch = (r.wipStatus || '').includes('ASSEMBLE_SCRAP') || (r.status || '').includes('ASSEMBLE_SCRAP');
+          const isPrimaryScrapBranch = (r.wipStatus || '').includes('PRIMARY_SCRAP') || (r.status || '').includes('PRIMARY_SCRAP');
+
+          moldingScrap += parseInt(attr.moldingScrap || (isMoldingScrapBranch ? (r.quantity || attr.quantity) : 0) || 0);
+          assembleScrap += parseInt(attr.assembleScrap || (isAssembleScrapBranch ? (r.quantity || attr.quantity) : 0) || 0);
+          primaryScrap += parseInt(attr.primaryScrap || (isPrimaryScrapBranch ? (r.quantity || attr.quantity) : 0) || 0);
         });
         
         // If calculation didn't yield a reliable start qty, fallback:
@@ -83,6 +86,13 @@ const FinishedGoods = () => {
         // 3. Calculate mathematically perfect Total Scrap across all stages
         // Started Qty = Final Output + Total Scrap
         let totalScrap = startedQty > finalQuantity ? (startedQty - finalQuantity) : (moldingScrap + assembleScrap + primaryScrap);
+
+        // 4. Mathematical Balancing: Ensure component scrap precisely equals Total Scrap.
+        // If there are missed scrap pieces (e.g. status changes without clear attributes), balance them into the final process phase (Primary).
+        let measuredScrap = moldingScrap + assembleScrap + primaryScrap;
+        if (totalScrap > measuredScrap) {
+            primaryScrap += (totalScrap - measuredScrap);
+        }
 
         // Get base metadata from the first finished record in the group
         const finishedRecord = finishedRecords[0];
