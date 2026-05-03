@@ -60,19 +60,21 @@ const FinishedGoods = () => {
         const primaryScrap = parseInt(latestAttr.primaryScrap || 0);
         const totalScrap = moldingScrap + assembleScrap + primaryScrap;
 
-        // Started Qty = the ORIGINAL quantity from the FIRST WIP_MOLDING record
-        // Search for the record that has wipStatus WIP_MOLDING (the origin record)
+        // Started Qty = moldingPassedQty (quantity that LEFT the molding stage)
+        // This is the true starting quantity for the main batch path
+        // Search through ALL records in the batch to find the one with moldingPassedQty
+        // If batch was split (QC branches), find the LARGEST moldingPassedQty (main path)
         let startedQty = 0;
         for (const record of sortedRecords) {
-          if (record.wipStatus === 'WIP_MOLDING' || record.wipStatus === 'INJECTION_MOLDING') {
-            // This is the original molding record - get its quantity
-            startedQty = parseInt(record.quantity || record.manufacturingAttributes?.quantity || 0);
-            if (startedQty > 0) break; // Found it
+          const attrs = record.manufacturingAttributes || {};
+          const moldQty = parseInt(attrs.moldingPassedQty || 0);
+          if (moldQty > startedQty) {
+            startedQty = moldQty;
           }
         }
         
-        // Fallback: if no WIP_MOLDING record, use first record's quantity
-        if (startedQty === 0 && sortedRecords.length > 0) {
+        // Fallback: if no moldingPassedQty found, calculate from first record
+        if (startedQty === 0) {
           const firstRecord = sortedRecords[0];
           startedQty = parseInt(firstRecord.quantity || firstRecord.manufacturingAttributes?.quantity || 0);
         }
