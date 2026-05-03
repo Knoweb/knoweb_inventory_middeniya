@@ -51,24 +51,18 @@ const FinishedGoods = () => {
         const latestRecord = sortedRecords[sortedRecords.length - 1];
         const latestAttr = latestRecord.manufacturingAttributes || {};
 
-        // Started Qty = moldingPassedQty from the ORIGINAL Molding batch (not QC/scrap splits)
-        // When batches split, both good and scrap parts have moldingCompleted: true
-        // But only the GOOD batch has isRecovered: false/null (scrap records have isRecovered: true)
-        let startedQty = 0;
-        for (const record of sortedRecords) {
-          const attrs = record.manufacturingAttributes || {};
-          // Skip QC/recovered records (scrap batches created during splits)
-          const isQcRecord = attrs.isRecovered === true;
-          
-          if (attrs.moldingCompleted === true && attrs.moldingPassedQty && !isQcRecord) {
-            startedQty = parseInt(attrs.moldingPassedQty);
-            break;
-          }
-        }
+        // Started Qty should come from the ORIGINAL WIP_MOLDING record (first record chronologically)
+        // This is the only record that truly represents what was "started"
+        const firstRecord = sortedRecords[0];
+        const firstAttr = firstRecord?.manufacturingAttributes || {};
         
-        // Fallback: use latest record's moldingPassedQty if found (and not a QC record)
-        if (startedQty === 0 && latestAttr.moldingPassedQty && latestAttr.isRecovered !== true) {
-          startedQty = parseInt(latestAttr.moldingPassedQty);
+        // The original started quantity is in the FIRST record's quantity field
+        // (this is what was sent to molding)
+        let startedQty = parseInt(firstRecord?.quantity || firstAttr?.quantity || 0);
+        
+        // If the first record has moldingPassedQty and it's from the original WIP_MOLDING, use that
+        if (!startedQty && firstAttr?.moldingPassedQty) {
+          startedQty = parseInt(firstAttr.moldingPassedQty);
         }
 
         // Final Output = quantity from the LATEST record (what we ended with)
