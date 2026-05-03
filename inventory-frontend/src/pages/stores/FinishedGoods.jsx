@@ -51,9 +51,21 @@ const FinishedGoods = () => {
         const latestRecord = sortedRecords[sortedRecords.length - 1];
         const latestAttr = latestRecord.manufacturingAttributes || {};
 
-        // Started Qty = moldingPassedQty (quantity that LEFT the Molding stage to enter Assembly)
-        // This is preserved through all stages in the manufacturingAttributes
-        const startedQty = parseInt(latestAttr.moldingPassedQty || 0);
+        // Started Qty = moldingPassedQty from ANY record that completed Molding
+        // Look for the record with moldingCompleted: true as it has the accurate moldingPassedQty
+        let startedQty = 0;
+        for (const record of sortedRecords) {
+          const attrs = record.manufacturingAttributes || {};
+          if (attrs.moldingCompleted === true && attrs.moldingPassedQty) {
+            startedQty = parseInt(attrs.moldingPassedQty);
+            break;
+          }
+        }
+        
+        // Fallback: use latest record's moldingPassedQty if found
+        if (startedQty === 0 && latestAttr.moldingPassedQty) {
+          startedQty = parseInt(latestAttr.moldingPassedQty);
+        }
 
         // Final Output = quantity from the LATEST record (what we ended with)
         const finalQuantity = parseInt(latestRecord.quantity || latestAttr.quantity || 0);
