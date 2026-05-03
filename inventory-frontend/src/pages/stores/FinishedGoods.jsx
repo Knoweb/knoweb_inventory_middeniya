@@ -12,173 +12,77 @@ const FinishedGoods = () => {
   const fetchFinishedGoods = async () => {
     setLoading(true);
     try {
-      // 1. Fetch ALL manufacturing products for this org to ensure we don't miss SCRAPPED fragments
       const orgId = user?.orgId;
-      const res = await manufacturingService.getByOrganization(orgId);
-      const allData = Array.isArray(res.data) ? res.data : (res.data?.content || []);
       
-      // 1. Enhanced Union-Find to group by ALL possible links
-      const parent = {};
-      const find = (i) => {
-        if (parent[i] === undefined || parent[i] === i) return i;
-        return parent[i] = find(parent[i]);
-      };
-      const union = (i, j) => {
-        const rootI = find(i);
-        const rootJ = find(j);
-        if (rootI !== rootJ) parent[rootI] = rootJ;
-      };
+      // Fetch ALL manufacturing records for this organization
+      const res = await manufacturingService.getByOrganization(orgId);
+      const allRecords = Array.isArray(res.data) ? res.data : (res.data?.content || res.data?.data || []);
 
-      // Link by hierarchy (Parent/Root) and by IDs
-      allData.forEach(batch => {
-        if (batch.parentProductId) union(batch.id, batch.parentProductId);
-        if (batch.rootProductId) union(batch.id, batch.rootProductId);
+      // Group records by batch identifier (workOrderNumber or batchNumber)
+      const batchGroups = {};
+
+      allRecords.forEach(record => {
+        // Use workOrderNumber as primary key, fallback to batchNumber, fallback to id
+        const batchKey = record.workOrderNumber || record.batchNumber || `BATCH_${record.id}`;
+        
+        if (!batchGroups[batchKey]) {
+          batchGroups[batchKey] = [];
+        }
+        batchGroups[batchKey].push(record);
       });
 
-      // Link by String Identifiers (Work Order and Batch)
-      const identifierMap = {};
-      allData.forEach(batch => {
-        const ids = [
-          batch.workOrderNumber ? `WO_${batch.workOrderNumber}` : null,
-          batch.batchNumber ? `BN_${String(batch.batchNumber).split('-QC')[0].replace(/-[0-9]{4}$/, '').trim()}` : null
-        ].filter(Boolean);
+      // Process each batch group to find finished goods
+      const finishedGoodsList = [];
 
-        ids.forEach(id => {
-          if (!identifierMap[id]) identifierMap[id] = batch.id;
-          else union(batch.id, identifierMap[id]);
+      Object.entries(batchGroups).forEach(([batchKey, records]) => {
+        // Sort records by date to get the sequence
+        const sortedRecords = [...records].sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.created_at || a.updatedAt || 0);
+          const dateB = new Date(b.createdAt || b.created_at || b.updatedAt || 0);
+          return dateA - dateB;
+        });
+
+        // Check if any record in the group is marked as FINISHED_GOOD
+        const finishedRecord = sortedRecords.find(r => r.wipStatus === 'FINISHED_GOOD' || r.status === 'FINISHED_GOOD');
+        
+        if (!finishedRecord) return; // Skip if no finished good in this batch
+
+        // Get the final/latest record in the sequence
+        const latestRecord = sortedRecords[sortedRecords.length - 1];
+        const attr = latestRecord.manufacturingAttributes || {};
+
+        // Extract scrap values from the final record (these should have accumulated values)
+        const moldingScrap = parseInt(attr.moldingScrap || 0);
+        const assembleScrap = parseInt(attr.assembleScrap || 0);
+        const primaryScrap = parseInt(attr.primaryScrap || 0);
+        const finalQuantity = parseInt(latestRecord.quantity || attr.quantity || 0);
+
+        // Calculate started quantity: finalQuantity + total scrap accumulated
+        const totalScrap = moldingScrap + assembleScrap + primaryScrap;
+        const startedQty = finalQuantity + totalScrap;
+
+        finishedGoodsList.push({
+          id: finishedRecord.id,
+          baseNumber: finishedRecord.workOrderNumber || finishedRecord.batchNumber || `BATCH-${finishedRecord.id}`,
+          itemName: attr.itemName || finishedRecord.itemName || 'Finished Component',
+          finalOutput: finalQuantity,
+          moldingScrap,
+          assembleScrap,
+          primaryScrap,
+          totalScrap,
+          startedQty,
+          updatedAt: latestRecord.updatedAt || latestRecord.createdAt,
+          createdAt: latestRecord.createdAt || latestRecord.created_at,
+          status: latestRecord.wipStatus || latestRecord.status,
+          allRecords: records.map(r => r.id), // Track all related records for deletion
+          isFullyProcessed: latestRecord.wipStatus === 'FINISHED_GOOD'
         });
       });
 
-      const groupedMap = {};
-      allData.forEach(batch => {
-        const rootId = find(batch.id);
-        const attr = batch.manufacturingAttributes || {};
-        
-        if (!groupedMap[rootId]) {
-          groupedMap[rootId] = {
-            id: rootId,
-            baseNumber: batch.workOrderNumber || batch.batchNumber || `WO-${rootId}`,
-            itemName: attr.itemName || batch.itemName || 'Finished Component',
-            updatedAt: batch.updatedAt || batch.createdAt,
-            allFragments: [],
-            hasFinishedGoods: false
-          };
-        }
+      // Sort by date, newest first
+      finishedGoodsList.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
-        const group = groupedMap[rootId];
-        const status = batch.wipStatus || batch.status;
-
-        if (status === 'FINISHED_GOOD') group.hasFinishedGoods = true;
-        group.allFragments.push(batch);
-        
-        const currentBatchDate = new Date(batch.updatedAt || batch.createdAt);
-        const groupDate = new Date(group.updatedAt);
-        if (currentBatchDate > groupDate) {
-          group.updatedAt = batch.updatedAt || batch.createdAt;
-          // Prefer Work Order for the title if available
-          if (batch.workOrderNumber) group.baseNumber = batch.workOrderNumber;
-        }
-      });
-
-      const aggregated = Object.values(groupedMap)
-        .filter(group => group.hasFinishedGoods)
-        .map(group => {
-          let finalOutput = 0;
-          let maxObservedQty = 0;
-          
-          const fragmentMap = {};
-          group.allFragments.forEach(f => { fragmentMap[f.id] = f; });
-
-          const getValueRaw = (f, sk) => f ? parseInt((f.manufacturingAttributes || {})[sk] || 0) : 0;
-
-          // Sort fragments chronologically to reconstruct the timeline
-          const sortedFragments = [...group.allFragments].sort((a, b) => {
-            const dateA = new Date(a.createdAt || a.created_at || a.updatedAt || 0);
-            const dateB = new Date(b.createdAt || b.created_at || b.updatedAt || 0);
-            return dateA - dateB;
-          });
-
-          // Logical Parent Resolution: Reconstruct the true manufacturing tree
-          const resolvedParents = {}; // f.id -> true parent fragment
-          
-          sortedFragments.forEach((f, index) => {
-            if (f.parentProductId && fragmentMap[f.parentProductId]) {
-              resolvedParents[f.id] = fragmentMap[f.parentProductId];
-            } else {
-              // Find the logical parent by looking backwards in time.
-              // A valid parent MUST have scrap values <= the current fragment's values.
-              // If a candidate has higher scrap, it means 'f' branched off BEFORE that candidate.
-              let logicalParent = null;
-              
-              const m_f = getValueRaw(f, 'moldingScrap');
-              const a_f = getValueRaw(f, 'assembleScrap');
-              const p_f = getValueRaw(f, 'primaryScrap');
-
-              for (let i = index - 1; i >= 0; i--) {
-                const candidate = sortedFragments[i];
-                const m_c = getValueRaw(candidate, 'moldingScrap');
-                const a_c = getValueRaw(candidate, 'assembleScrap');
-                const p_c = getValueRaw(candidate, 'primaryScrap');
-
-                if (m_c <= m_f && a_c <= a_f && p_c <= p_f) {
-                  logicalParent = candidate;
-                  break; // Found the most recent valid ancestor
-                }
-              }
-              resolvedParents[f.id] = logicalParent;
-            }
-          });
-
-          const getStageScrapSum = (stageKey) => {
-            const attrKey = stageKey.toLowerCase() + 'Scrap';
-            const getValue = (f) => f ? parseInt((f.manufacturingAttributes || {})[attrKey] || 0) : 0;
-
-            let totalDelta = 0;
-            sortedFragments.forEach(f => {
-              const currentVal = getValue(f);
-              const parent = resolvedParents[f.id];
-              const parentVal = getValue(parent);
-              
-              const delta = Math.max(0, currentVal - parentVal);
-              totalDelta += delta;
-            });
-            return totalDelta;
-          };
-
-          const moldingScrap = getStageScrapSum('MOLDING');
-          const assembleScrap = getStageScrapSum('ASSEMBLE');
-          const primaryScrap = getStageScrapSum('PRIMARY');
-
-          group.allFragments.forEach(f => {
-            const status = f.wipStatus || f.status;
-            const attr = f.manufacturingAttributes || {};
-            const qty = parseInt(f.quantity || attr.quantity || 0);
-
-            if (status === 'FINISHED_GOOD') {
-              // Only count quantity if it's a leaf node to avoid double counting updates
-              const isLeaf = !group.allFragments.some(child => child.parentProductId === f.id);
-              if (isLeaf) finalOutput += qty;
-            }
-            if (qty > maxObservedQty) maxObservedQty = qty;
-          });
-
-          const totalScrap = moldingScrap + assembleScrap + primaryScrap;
-          const startedQty = Math.max(maxObservedQty, finalOutput + totalScrap);
-
-          return {
-            ...group,
-            startedQty,
-            finalOutput,
-            totalScrap,
-            moldingScrap,
-            assembleScrap,
-            primaryScrap,
-            originalRecords: group.allFragments.map(f => f.id)
-          };
-        })
-        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-      setFinishedBatches(aggregated);
+      setFinishedBatches(finishedGoodsList);
     } catch (error) {
       console.error('Error fetching finished goods:', error);
     } finally {
@@ -189,15 +93,19 @@ const FinishedGoods = () => {
   const handleDeleteBatch = async () => {
     if (!batchToDelete) return;
     try {
-      // Delete all records associated with this base batch
-      if (batchToDelete.originalRecords && batchToDelete.originalRecords.length > 0) {
-        for (const id of batchToDelete.originalRecords) {
-          await manufacturingService.delete(id);
+      // Delete all records associated with this batch group
+      if (batchToDelete.allRecords && batchToDelete.allRecords.length > 0) {
+        for (const id of batchToDelete.allRecords) {
+          try {
+            await manufacturingService.delete(id);
+          } catch (err) {
+            console.warn(`Could not delete record ${id}:`, err);
+          }
         }
       } else {
         await manufacturingService.delete(batchToDelete.id);
       }
-      fetchFinishedGoods();
+      fetchFinishedGoods(); // Refresh after deletion
     } catch (error) {
       console.error('Error deleting batch:', error);
     } finally {
@@ -260,47 +168,45 @@ const FinishedGoods = () => {
                         FINISHED_GOOD
                       </span>
                     </div>
-                      <div className="flex items-start gap-4">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-right">
-                          <div>ID: {batch.id}</div>
-                          <div>{new Date(batch.updatedAt || batch.createdAt).toLocaleDateString()}</div>
-                        </div>
-                        <button
-                          onClick={() => setBatchToDelete(batch)}
-                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                          title="Delete Batch"
-                        >
-                          <Trash2 size={16} />
-                        </button>                        </div>
+                    <div className="flex items-start gap-4">
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-right">
+                        <div>ID: {batch.id}</div>
+                        <div>{new Date(batch.updatedAt || batch.createdAt).toLocaleDateString()}</div>
+                      </div>
+                      <button
+                        onClick={() => setBatchToDelete(batch)}
+                        className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+                        title="Delete Batch"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
-                    
-                    <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.baseNumber}</h3>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-slate-800 mb-1">{batch.baseNumber}</h3>
                   <p className="text-sm font-extrabold text-indigo-500 mb-6 uppercase tracking-wider">{batch.itemName}</p>
                   
                   <div className="mt-auto grid grid-cols-3 gap-2">
-                    {/* Molding Stats */}
+                    {/* Molding Scrap */}
                     <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 relative group">
-                      <div className="text-[9px] font-black text-slate-400 mb-2 uppercase tracking-widest flex items-center justify-between">
+                      <div className="text-[9px] font-black text-slate-400 mb-2 uppercase tracking-widest">
                         <span>Molding Scrap</span>
-                        <Layers size={10} className="opacity-50" />
                       </div>
                       <div className="text-xl font-black text-rose-600">{batch.moldingScrap}</div>
                     </div>
 
-                    {/* Assemble Stats */}
+                    {/* Assemble Scrap */}
                     <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 relative group">
-                      <div className="text-[9px] font-black text-slate-400 mb-2 uppercase tracking-widest flex items-center justify-between">
+                      <div className="text-[9px] font-black text-slate-400 mb-2 uppercase tracking-widest">
                         <span>Assemble Scrap</span>
-                        <Box size={10} className="opacity-50" />
                       </div>
                       <div className="text-xl font-black text-rose-600">{batch.assembleScrap}</div>
                     </div>
 
-                    {/* Primary Stats */}
+                    {/* Primary Scrap */}
                     <div className="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100/50 relative group">
-                      <div className="text-[9px] font-black text-indigo-400 mb-2 uppercase tracking-widest flex items-center justify-between">
+                      <div className="text-[9px] font-black text-indigo-400 mb-2 uppercase tracking-widest">
                         <span>Primary Scrap</span>
-                        <CheckCircle2 size={10} className="opacity-50" />
                       </div>
                       <div className="text-xl font-black text-rose-600">{batch.primaryScrap}</div>
                     </div>
@@ -342,40 +248,40 @@ const FinishedGoods = () => {
         </div>
       )}
 
-      {batchToDelete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-6">
-                <Trash2 size={40} />
+        {batchToDelete && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in duration-200">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-20 h-20 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-6">
+                  <Trash2 size={40} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Delete Finished Good</h2>
+                <p className="text-slate-500 mt-3 font-medium">
+                  Are you sure you want to permanently delete{" "}
+                  <span className="font-bold text-slate-700">
+                    {batchToDelete.baseNumber}
+                  </span>
+                  ? This will remove all related records. This action cannot be undone.
+                </p>
               </div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Delete Finished Good</h2>
-              <p className="text-slate-500 mt-3 font-medium">
-                Are you sure you want to permanently delete{" "}
-                <span className="font-bold text-slate-700">
-                  {batchToDelete.manufacturingAttributes?.batchNumber || batchToDelete.batchNumber || batchToDelete.workOrderNumber || `BATCH-${batchToDelete.id}`}
-                </span>
-                ? This action cannot be undone.
-              </p>
-            </div>
-            
-            <div className="flex gap-4 w-full mt-8">
-              <button
-                onClick={() => setBatchToDelete(null)}
-                className="flex-1 px-4 py-3 rounded-2xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-colors uppercase tracking-wider text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteBatch}
-                className="flex-1 px-4 py-3 rounded-2xl font-black text-white bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-200 hover:shadow-rose-300 transition-all active:scale-95 uppercase tracking-wider text-sm flex justify-center items-center gap-2"
-              >
-                <Trash2 size={18} /> Delete
-              </button>
+              
+              <div className="flex gap-4 w-full mt-8">
+                <button
+                  onClick={() => setBatchToDelete(null)}
+                  className="flex-1 px-4 py-3 rounded-2xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-colors uppercase tracking-wider text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteBatch}
+                  className="flex-1 px-4 py-3 rounded-2xl font-black text-white bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-200 hover:shadow-rose-300 transition-all active:scale-95 uppercase tracking-wider text-sm flex justify-center items-center gap-2"
+                >
+                  <Trash2 size={18} /> Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 };
