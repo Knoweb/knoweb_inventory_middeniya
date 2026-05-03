@@ -47,22 +47,25 @@ const FinishedGoods = () => {
         
         if (!finishedRecord) return; // Skip if no finished good in this batch
 
-        // Get the LATEST record in the sequence for final output and scrap values
+        // Get the FINISHED record's attributes (the actual batch we're displaying)
+        const finishedAttr = finishedRecord.manufacturingAttributes || {};
+
+        // Get the LATEST record in the sequence for any additional data
         const latestRecord = sortedRecords[sortedRecords.length - 1];
         const latestAttr = latestRecord.manufacturingAttributes || {};
 
-        // Final Output = quantity from the LATEST record (what we ended with)
-        const finalQuantity = parseInt(latestRecord.quantity || latestAttr.quantity || 0);
+        // Final Output = quantity from the FINISHED record
+        const finalQuantity = parseInt(finishedRecord.quantity || finishedAttr.quantity || 0);
 
-        // Extract scrap values from the final record (these should have accumulated values)
-        const moldingScrap = parseInt(latestAttr.moldingScrap || 0);
-        const assembleScrap = parseInt(latestAttr.assembleScrap || 0);
-        const primaryScrap = parseInt(latestAttr.primaryScrap || 0);
+        // Extract scrap values from the FINISHED record (these should be accurate for this batch)
+        const moldingScrap = parseInt(finishedAttr.moldingScrap || 0);
+        const assembleScrap = parseInt(finishedAttr.assembleScrap || 0);
+        const primaryScrap = parseInt(finishedAttr.primaryScrap || 0);
         const totalScrap = moldingScrap + assembleScrap + primaryScrap;
 
         // Started Qty = moldingPassedQty + moldingScrap
         // This represents: (qty that passed molding) + (qty lost to molding scrap) = original started qty
-        const moldingPassedQty = parseInt(latestAttr.moldingPassedQty || 0);
+        const moldingPassedQty = parseInt(finishedAttr.moldingPassedQty || 0);
         const startedQty = moldingPassedQty + moldingScrap;
 
         finishedGoodsList.push({
