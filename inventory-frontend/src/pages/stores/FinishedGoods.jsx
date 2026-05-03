@@ -47,12 +47,18 @@ const FinishedGoods = () => {
         
         if (!finishedRecord) return; // Skip if no finished good in this batch
 
-        // Get the FIRST Molding record to get the original started quantity
-        const moldingRecord = sortedRecords.find(r => r.wipStatus === 'WIP_MOLDING');
-        const moldingAttr = moldingRecord?.manufacturingAttributes || {};
+        // Get the FIRST record in the sequence (the initial batch creation) to get the original started quantity
+        const firstRecord = sortedRecords[0];
+        const firstAttr = firstRecord?.manufacturingAttributes || {};
         
-        // Started Qty = quantity from the original Molding creation (what we started with)
-        const startedQty = parseInt(moldingRecord?.quantity || moldingAttr.quantity || 0);
+        // Started Qty = quantity from the first record created (what we started with)
+        // Try multiple sources: direct quantity, manufacturingAttributes.quantity, or final quantity
+        const startedQty = parseInt(
+          firstRecord?.quantity || 
+          firstAttr?.quantity || 
+          firstAttr?.startedQty ||
+          0
+        );
         
         // Get the LATEST record in the sequence for final output and scrap values
         const latestRecord = sortedRecords[sortedRecords.length - 1];
