@@ -127,9 +127,6 @@ const PrimaryDashboard = () => {
             notes: 'Good units from split finishing'
           },
           wipStatus: 'FINISHED_GOOD',
-          inspectionStatus: null,
-          defectCount: 0,
-          qualityGrade: null
         };
         await manufacturingService.update(selectedBatch.id, goodBatch);
         await manufacturingService.updateWipStatus(selectedBatch.id, 'FINISHED_GOOD');
@@ -167,9 +164,6 @@ const PrimaryDashboard = () => {
         // SCENARIO: Standard update
         const updatedBatch = {
           ...selectedBatch,
-          inspectionStatus: null,
-          defectCount: 0,
-          qualityGrade: null,
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
@@ -558,5 +552,6 @@ const PrimaryDashboard = () => {
 };
 
 export default PrimaryDashboard;
+
 
 

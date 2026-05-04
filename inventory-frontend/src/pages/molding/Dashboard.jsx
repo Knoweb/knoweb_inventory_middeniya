@@ -232,9 +232,6 @@ const MoldingDashboard = () => {
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_ASSEMBLE',
-          inspectionStatus: null,
-          defectCount: 0,
-          qualityGrade: null
         };
         await manufacturingService.update(selectedBatch.id, goodBatch);
 
@@ -271,9 +268,6 @@ const MoldingDashboard = () => {
         // SCENARIO: Standard update (either all passed, or whole batch sent to QC)
         const updatedBatch = {
           ...selectedBatch,
-          inspectionStatus: null,
-          defectCount: 0,
-          qualityGrade: null,
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
@@ -762,6 +756,7 @@ const MoldingDashboard = () => {
 };
 
 export default MoldingDashboard;
+
 
 
 

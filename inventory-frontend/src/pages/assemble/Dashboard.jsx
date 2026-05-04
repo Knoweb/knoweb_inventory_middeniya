@@ -129,9 +129,6 @@ const AssembleDashboard = () => {
             notes: 'Good units from split batch'
           },
           wipStatus: 'WIP_PRIMARY',
-          inspectionStatus: null,
-          defectCount: 0,
-          qualityGrade: null
         };
         await manufacturingService.update(selectedBatch.id, goodBatch);
 
@@ -169,9 +166,6 @@ const AssembleDashboard = () => {
         // SCENARIO: Standard update
         const updatedBatch = {
           ...selectedBatch,
-          inspectionStatus: null,
-          defectCount: 0,
-          qualityGrade: null,
           manufacturingAttributes: {
             ...(selectedBatch.manufacturingAttributes || {}),
             quantity: validQty,
@@ -558,6 +552,7 @@ const AssembleDashboard = () => {
 };
 
 export default AssembleDashboard;
+
 
 
 
