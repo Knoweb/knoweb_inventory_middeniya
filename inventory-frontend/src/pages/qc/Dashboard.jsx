@@ -200,7 +200,14 @@ const QCDashboard = () => {
                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full inline-block w-fit ${item.inspectionStatus === 'PASSED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {item.inspectionStatus === 'PASSED' ? 'Approved' : 'Scrapped'}
                         </span>
-                        <span className="text-sm font-black text-slate-800 ml-1">Qty: {item.defectCount || 0}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-slate-800 ml-1">Qty: {item.defectCount || 0}</span>
+                            {item.inspectionStatus === 'PASSED' && item.manufacturingAttributes?.lastQcScrap > 0 && (
+                              <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 rounded-md border border-red-100">
+                                Scrap: {item.manufacturingAttributes.lastQcScrap}
+                              </span>
+                            )}
+                          </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 font-medium italic">"{item.remarks || item.defectDescription || 'N/A'}"</td>

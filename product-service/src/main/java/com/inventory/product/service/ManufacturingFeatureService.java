@@ -336,6 +336,8 @@ public class ManufacturingFeatureService {
                 qcScrap = (totalSentToQc != null ? totalSentToQc : 0) - (recoveredQty != null ? recoveredQty : 0);
             }
 
+            product.getManufacturingAttributes().put("lastQcScrap", qcScrap);
+
             if (qcScrap > 0) {
                 String scrapKey = "moldingScrap";
                 if ("ASSEMBLE".equals(lastStage)) scrapKey = "assembleScrap";
