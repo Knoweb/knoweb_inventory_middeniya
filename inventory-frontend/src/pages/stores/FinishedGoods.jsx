@@ -50,12 +50,18 @@ const FinishedGoods = () => {
         // Deduplicate all terminal branches to prevent double-counting.
         // We find the final state of each unique branch.
         const terminalBranches = {};
-        sortedRecords.forEach(r => {
-            const branchId = r.batchNumber || r.id; 
-            terminalBranches[branchId] = r; 
-        });
+          sortedRecords.forEach(r => {
+              const branchId = r.batchNumber || r.id; 
+              terminalBranches[branchId] = r; 
+          });
 
-        let finalQuantity = 0;
+          const hasActiveBranches = Object.values(terminalBranches).some(r => {
+             const s = r.wipStatus || r.status || '';
+             return s !== 'FINISHED_GOOD' && s !== 'SCRAPPED' && s !== 'COMPLETED';
+          });
+          if (hasActiveBranches) return;
+
+          let finalQuantity = 0;
         let startedQty = 0;
         let moldingScrap = 0;
         let assembleScrap = 0;
@@ -347,3 +353,4 @@ const FinishedGoods = () => {
 };
 
 export default FinishedGoods;
+
