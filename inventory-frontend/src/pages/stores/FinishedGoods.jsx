@@ -134,19 +134,38 @@ const FinishedGoods = () => {
   const handleDeleteBatch = async () => {
     if (!batchToDelete) return;
     try {
-      // Delete all records associated with this batch group
+      // 1. Delete all explicitly tracked records in the finished goods group
       if (batchToDelete.allRecords && batchToDelete.allRecords.length > 0) {
-        for (const id of batchToDelete.allRecords) {
-          try {
-            await manufacturingService.delete(id);
-          } catch (err) {
-            console.warn(`Could not delete record ${id}:`, err);
-          }
-        }
+        // Use Promise.allAll to delete all records smoothly without blocking sequentially
+        const deletePromises = batchToDelete.allRecords.map(id => manufacturingService.delete(id).catch(err => {
+            console.warn(`Could not delete explicitly tracked record ${id}:`, err);
+        }));
+        await Promise.all(deletePromises);
       } else {
         await manufacturingService.delete(batchToDelete.id);
       }
-      fetchFinishedGoods(); // Refresh after deletion
+
+      // 2. Fetch ALL manufacturing records for the organization again to find ANY lingering history 
+      // (e.g. old MOLDING, ASSEMBLE WIP stages) that belongs to this EXACT baseNumber/Work Order.
+      const userOrgId = JSON.parse(localStorage.getItem('user'))?.orgId || null;
+      const res = await manufacturingService.getByOrganization(userOrgId);
+      const allOrgRecords = Array.isArray(res.data) ? res.data : (res.data?.content || res.data?.data || []);
+      
+      const lingeringRecords = allOrgRecords.filter(r => 
+        (r.workOrderNumber === batchToDelete.baseNumber || 
+         r.batchNumber === batchToDelete.baseNumber || 
+         r.batchNumber?.startsWith(batchToDelete.baseNumber + '-QC'))
+      );
+
+      // 3. Force wipe any remaining lingering history blocks from the earlier WIP dashboards
+      if (lingeringRecords.length > 0) {
+        const wipePromises = lingeringRecords.map(r => manufacturingService.delete(r.id).catch(err => {
+             console.warn(`Could not wipe lingering record ${r.id}:`, err);
+        }));
+        await Promise.all(wipePromises);
+      }
+
+      fetchFinishedGoods(); // Refresh UI after deep deletion
     } catch (error) {
       console.error('Error deleting batch:', error);
     } finally {
