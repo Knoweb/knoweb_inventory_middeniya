@@ -80,11 +80,10 @@ const FinishedGoods = () => {
             moldingScrap += parseInt(attr.moldingScrap || 0); // Root branches hold the true molding scrap
           }
 
-          // 3. Assemble Scrap = Only sum from branches born in ASSEMBLE (to prevent double counting parent's scrap)
-          if (attr.bornInStage === 'ASSEMBLE') {
-             // If this segment was born in Assemble, any assembleScrap it carries is unique to it.
-             assembleScrap += parseInt(attr.assembleScrap || 0);
-          }
+          // 3. Assemble Scrap = Sum from branches born in ASSEMBLE or MOLDING (to prevent double counting in PRIMARY splits)
+            if (!attr.bornInStage || attr.bornInStage === 'MOLDING' || attr.bornInStage === 'ASSEMBLE') {
+               assembleScrap += parseInt(attr.assembleScrap || 0);
+            }
         });
         
         // If calculation didn't yield a reliable start qty, fallback:
@@ -353,4 +352,5 @@ const FinishedGoods = () => {
 };
 
 export default FinishedGoods;
+
 
