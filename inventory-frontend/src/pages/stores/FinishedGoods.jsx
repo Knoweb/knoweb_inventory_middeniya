@@ -47,54 +47,50 @@ const FinishedGoods = () => {
         if (finishedRecords.length === 0) return; // Skip if no finished goods
         
         // --- Aggregate statistics for the ENTIRE Work Order / Batch Group ---
+        // Deduplicate all terminal branches to prevent double-counting.
+        // We find the final state of each unique branch.
+        const terminalBranches = {};
+        sortedRecords.forEach(r => {
+            const branchId = r.batchNumber || r.id; 
+            terminalBranches[branchId] = r; 
+        });
+
         let finalQuantity = 0;
         let startedQty = 0;
-        let maxMoldingScrap = 0;
-        let maxAssembleScrap = 0;
+        let moldingScrap = 0;
+        let assembleScrap = 0;
         
-        // 1. Total Final Output = SUM of all finished goods in this work order group
-        // We use an object to deduplicate finished records by their ultimate batch number
-        const uniqueFinished = {};
-        finishedRecords.forEach(fr => {
-            const id = fr.batchNumber || fr.id;
-            uniqueFinished[id] = fr;
-        });
-
-        Object.values(uniqueFinished).forEach(fr => {
-            finalQuantity += parseInt(fr.quantity || fr.manufacturingAttributes?.quantity || 0);
-        });
-
-        // 2. True Started Qty = Sum of passing and scrap at the MOLDING stage (the root of the batch)
-        sortedRecords.forEach(r => {
+        Object.values(terminalBranches).forEach(r => {
           const attr = r.manufacturingAttributes || {};
+
+          // 1. Total Final Output
+          if (r.wipStatus === 'FINISHED_GOOD' || r.status === 'FINISHED_GOOD') {
+            finalQuantity += parseInt(r.quantity || attr.quantity || 0);
+          }
           
-          // Sum up starting quantities ONLY from branches born in MOLDING (or root branches with no bornInStage)
+          // 2. True Started Qty = Sum of passing and scrap at the MOLDING stage (the root of the batch)
           if (!attr.bornInStage || attr.bornInStage === 'MOLDING') {
             startedQty += parseInt(attr.moldingPassedQty || 0) + parseInt(attr.moldingScrap || 0);
+            moldingScrap += parseInt(attr.moldingScrap || 0); // Root branches hold the true molding scrap
           }
 
-          // To prevent DOUBLE COUNTING inherited scrap attributes when branches split, 
-          // we extract the MAXIMUM recorded scrap value for the early stages across the entire Work Order.
-          maxMoldingScrap = Math.max(maxMoldingScrap, parseInt(attr.moldingScrap || 0));
-          maxAssembleScrap = Math.max(maxAssembleScrap, parseInt(attr.assembleScrap || 0));
+          // 3. Assemble Scrap = Only sum from branches born in ASSEMBLE (to prevent double counting parent's scrap)
+          if (attr.bornInStage === 'ASSEMBLE') {
+             // If this segment was born in Assemble, any assembleScrap it carries is unique to it.
+             assembleScrap += parseInt(attr.assembleScrap || 0);
+          }
         });
         
         // If calculation didn't yield a reliable start qty, fallback:
         if (startedQty === 0) {
-          startedQty = finalQuantity + maxMoldingScrap + maxAssembleScrap;
+          startedQty = finalQuantity + moldingScrap + assembleScrap + parseInt(finishedRecords[0]?.manufacturingAttributes?.primaryScrap || 0);
         }
         
-        // 3. Mathematical Balancing
-        // Total Scrap is exactly the difference between what started and what finished.
-        let totalScrap = startedQty > finalQuantity ? (startedQty - finalQuantity) : (maxMoldingScrap + maxAssembleScrap);
+        // 4. Calculate mathematically perfect Total Scrap across all stages
+        let totalScrap = startedQty > finalQuantity ? (startedQty - finalQuantity) : (moldingScrap + assembleScrap);
 
-        // Assign the extracted max values to our display variables
-        let moldingScrap = maxMoldingScrap;
-        let assembleScrap = maxAssembleScrap;
-
-        // 4. Primary Scrap is whatever is left over from Total Scrap.
-        // Because Primary is the final stage where extreme fragmentation occurs, 
-        // deriving it mathematically from the absolute Total Scrap guarantees 100% precision.
+        // 5. Primary Scrap is whatever is left over from Total Scrap.
+        // Primary is the final stage, so any scrap not accounted for in Molding or Assemble must be Primary.
         let primaryScrap = totalScrap - (moldingScrap + assembleScrap);
         if (primaryScrap < 0) primaryScrap = 0; // Safeguard
 
