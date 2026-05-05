@@ -23,7 +23,7 @@ const MoldingDashboard = () => {
   const [createFormData, setCreateFormData] = useState({
     productId: '',
     batchNumber: "BATCH-PL-" + Math.floor(Math.random() * 1000),
-    quantity: 500,
+    quantity: 100,
     itemName: "",
     workOrderNumber: "WO-" + Math.floor(Math.random() * 1000)
   });
