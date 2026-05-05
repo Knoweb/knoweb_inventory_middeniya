@@ -7,7 +7,7 @@ import { useNotification } from '../context/NotificationContext';
 function UnifiedProductRegistration({ categories: propsCategories, brands: propsBrands, onRefresh }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { confirm } = useNotification();
+  const { confirm, showToast } = useNotification();
   const [loading, setLoading] = useState(false);
   const [warehouses, setWarehouses] = useState([]);
   const [categories, setCategories] = useState(propsCategories || []);
@@ -140,7 +140,7 @@ function UnifiedProductRegistration({ categories: propsCategories, brands: props
       };
 
       const response = await productService.registerWithStock(requestData);
-      alert(`Product registered successfully!`);
+      showToast('Product registered successfully!', 'success');
 
       if (!onRefresh) {
         try {
@@ -159,7 +159,7 @@ function UnifiedProductRegistration({ categories: propsCategories, brands: props
       }
     } catch (error) {
       console.error('Error registering product:', error);
-      alert(error.response?.data?.message || 'Failed to register product.');
+      showToast(error.response?.data?.message || 'Failed to register product.', 'error');
     } finally {
       setLoading(false);
     }
