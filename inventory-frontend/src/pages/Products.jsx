@@ -6,6 +6,7 @@ import { useNotification } from '../context/NotificationContext';
 import { FaBox, FaExclamationTriangle, FaBan, FaPills, FaSnowflake } from 'react-icons/fa';
 import { Edit, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import ProductRegistrationModal from '../components/ProductRegistrationModal';
+import ProductDetailsModal from '../components/ProductDetailsModal';
 import { categoryService, brandService } from '../services/api';
 
 function Products() {
@@ -27,6 +28,7 @@ function Products() {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [viewingProduct, setViewingProduct] = useState(null);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
 
@@ -336,7 +338,7 @@ function Products() {
                                 (isPharmacy && activeTab !== 'all' ? pharmacyProducts : products).map((product) => {
                                     if (isPharmacy && activeTab !== 'all') {
                                         return (
-                                            <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <tr key={product.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setViewingProduct(product)}>
                                                 <td className="px-6 py-4 font-bold text-gray-900 text-sm whitespace-nowrap">{getProductName(product.productId)}</td>
                                                 <td className="px-6 py-4 text-xs font-mono text-gray-500">{product.batchNumber}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-700">{product.activeIngredient}</td>
@@ -375,14 +377,14 @@ function Products() {
                                                         <button
                                                             className="p-2 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors shadow-sm"
                                                             title="Edit"
-                                                            onClick={() => handleEdit(product)}
+                                                            onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
                                                         >
                                                             <Edit size={16} />
                                                         </button>
                                                         <button
                                                             className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors shadow-sm"
                                                             title="Recall Product"
-                                                            onClick={() => handleRecall(product.id)}
+                                                            onClick={(e) => { e.stopPropagation(); handleRecall(product.id); }}
                                                             disabled={product.isRecalled}
                                                         >
                                                             <AlertTriangle size={16} />
@@ -390,7 +392,7 @@ function Products() {
                                                         <button
                                                             className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors shadow-sm"
                                                             title="Delete"
-                                                            onClick={() => handleDelete(product.id)}
+                                                            onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -404,7 +406,7 @@ function Products() {
                                         const unit = product.unit || 'UNIT';
 
                                         return (
-                                            <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <tr key={product.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setViewingProduct(product)}>
                                                 <td className="px-6 py-4 text-[10px] font-mono font-bold text-gray-400">{product.sku}</td>
                                                 <td className="px-6 py-4 font-bold text-gray-900 text-sm">{product.name}</td>
                                                 {isPharmacy && <td className="px-6 py-4 text-xs font-medium text-gray-500 italic">{genericName}</td>}
@@ -434,14 +436,14 @@ function Products() {
                                                         <button
                                                             className="p-2 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors shadow-sm"
                                                             title="Edit"
-                                                            onClick={() => handleEdit(product)}
+                                                            onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
                                                         >
                                                             <Edit size={16} />
                                                         </button>
                                                         <button
                                                             className="p-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors shadow-sm"
                                                             title="Delete"
-                                                            onClick={() => handleDelete(product.id)}
+                                                            onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -471,6 +473,13 @@ function Products() {
                 brands={brands}
                 editingProduct={editingProduct}
                 onSave={handleSave}
+            />
+
+            <ProductDetailsModal
+                isOpen={!!viewingProduct}
+                onClose={() => setViewingProduct(null)}
+                product={viewingProduct}
+                isPharmacy={isPharmacy}
             />
         </div>
     );
