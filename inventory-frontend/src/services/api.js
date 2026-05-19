@@ -139,6 +139,15 @@ export const supplierService = {
   delete: (id) => apiClient.delete(`/api/suppliers/${id}`),
 };
 
+export const customerService = {
+  getAll: () => apiClient.get('/api/customers'),
+  getById: (id) => apiClient.get(`/api/customers/${id}`),
+  getByOrganization: (orgId) => apiClient.get(`/api/customers/organization/${orgId}`),
+  create: (customer) => apiClient.post('/api/customers', customer),
+  update: (id, customer) => apiClient.put(`/api/customers/${id}`, customer),
+  delete: (id) => apiClient.delete(`/api/customers/${id}`),
+};
+
 export const userService = {
   getAll: () => apiClient.get('/api/users'),
   register: (user) => apiClient.post('/api/users/register', user),
