@@ -953,7 +953,7 @@ function Orders() {
               <span className={`ml-1 text-[9px] px-2 py-0.5 rounded-full font-black ${activeTab === 'purchase' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>{purchaseOrders.length}</span>
             </button>
             <button onClick={() => setActiveTab('sales')} className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2.5 transition-all ${activeTab === 'sales' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'text-slate-400 hover:text-slate-600'}`}>
-              <TrendingUp size={16} /> Fulfillment
+              <TrendingUp size={16} /> Sales Order
               <span className={`ml-1 text-[9px] px-2 py-0.5 rounded-full font-black ${activeTab === 'sales' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>{salesOrders.length}</span>
             </button>
           </div>
@@ -1033,7 +1033,7 @@ function Orders() {
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border ${order.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
                               }`}>
-                              {order.status === 'COMPLETED' ? '✅ Fulfilled' : '⏳ Pending'}
+                              {order.status === 'COMPLETED' ? '✅ COMPLETED' : '⏳ Pending'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-[10px] font-black text-slate-300 uppercase italic tracking-tighter">{new Date(order.createdAt).toLocaleDateString()}</td>
