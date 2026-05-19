@@ -266,7 +266,6 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
   const [warehousesLoading, setWarehousesLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
   const [customersLoading, setCustomersLoading] = useState(true);
-  const [customerMode, setCustomerMode] = useState('select'); // 'select' or 'manual'
   const [form, setForm] = useState(INIT_SO);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -412,15 +411,9 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
               <div className="flex gap-3 items-center">
                 <select
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all"
-                  value={customerMode === 'manual' ? '__manual__' : (customers.find(c => (c.customerName || c.name) === form.customerName)?.id || '')}
+                  value={customers.find(c => (c.customerName || c.name) === form.customerName)?.id || ''}
                   onChange={e => {
                     const v = e.target.value;
-                    if (v === '__manual__') {
-                      setCustomerMode('manual');
-                      setForm(p => ({ ...p, customerName: '' }));
-                      return;
-                    }
-                    setCustomerMode('select');
                     if (!v) {
                       setForm(p => ({ ...p, customerName: '' }));
                       return;
@@ -433,13 +426,10 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
                   {customers.map(c => (
                     <option key={c.id} value={c.id}>{c.customerName || c.name}</option>
                   ))}
-                  <option value="__manual__">— Manual entry —</option>
                 </select>
               </div>
 
-              {customerMode === 'manual' && (
-                <input type="text" className="w-full mt-3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all" placeholder="Enter customer name manually" value={form.customerName} onChange={e => setForm(p => ({ ...p, customerName: e.target.value }))} required />
-              )}
+              {/* Manual entry disabled: customers must be selected from system dropdown */}
             </div>
 
             <div className="space-y-1.5">
