@@ -408,28 +408,26 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Customer Entity *</label>
-              <div className="flex gap-3 items-center">
-                <select
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all"
-                  value={customers.find(c => (c.customerName || c.name) === form.customerName)?.id || ''}
-                  onChange={e => {
-                    const v = e.target.value;
-                    if (!v) {
-                      setForm(p => ({ ...p, customerName: '' }));
-                      return;
-                    }
-                    const sel = customers.find(c => String(c.id) === String(v));
-                    setForm(p => ({ ...p, customerName: sel ? (sel.customerName || sel.name) : '' }));
-                  }}
-                >
-                  <option value="">{customersLoading ? '⏳ Loading customers…' : '— Select customer —'}</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.customerName || c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Manual entry disabled: customers must be selected from system dropdown */}
+              <select
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all"
+                value={customers.find(c => (c.customerName || c.name) === form.customerName)?.id || ''}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (!v) {
+                    setForm(p => ({ ...p, customerName: '' }));
+                    return;
+                  }
+                  const sel = customers.find(c => String(c.id) === String(v));
+                  setForm(p => ({ ...p, customerName: sel ? (sel.customerName || sel.name) : '' }));
+                }}
+                required
+                disabled={customersLoading}
+              >
+                <option value="">{customersLoading ? '⏳ Loading customers…' : '— Select customer —'}</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>{c.customerName || c.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1.5">
