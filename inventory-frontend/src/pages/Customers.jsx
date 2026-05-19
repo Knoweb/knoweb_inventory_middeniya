@@ -11,7 +11,7 @@ function Customers() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
-  const [formData, setFormData] = useState({ customerName: '', vatNumber: '', phoneNumber: '', address: '', orgId: user?.orgId || 1 });
+  const [formData, setFormData] = useState({ customerName: '', vatNumber: '', phoneNumber: '', address: '' });
   const [contactDetails, setContactDetails] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -37,7 +37,7 @@ function Customers() {
   };
 
   const resetForm = () => {
-    setFormData({ customerName: '', vatNumber: '', phoneNumber: '', address: '', orgId: user?.orgId || 1 });
+    setFormData({ customerName: '', vatNumber: '', phoneNumber: '', address: '' });
     setContactDetails([]);
     setIsEditing(false);
     setEditId(null);
@@ -52,7 +52,7 @@ function Customers() {
       if (k === 'email' || k === 'phone') return;
       details.push({ key: k, value: contactInfo[k] });
     });
-    setFormData({ customerName: customer.customerName || customer.name || '', vatNumber: customer.vatNumber || '', phoneNumber: customer.phoneNumber || '', address: customer.address || '', orgId: customer.orgId || user?.orgId || 1 });
+    setFormData({ customerName: customer.customerName || customer.name || '', vatNumber: customer.vatNumber || '', phoneNumber: customer.phoneNumber || '', address: customer.address || '' });
     setContactDetails(details);
     setIsEditing(true);
     setEditId(customer.id);
@@ -78,7 +78,6 @@ function Customers() {
         vatNumber: formData.vatNumber,
         phoneNumber: formData.phoneNumber,
         address: formData.address,
-        orgId: formData.orgId,
         contactInfo: contactInfoPayload
       };
 
@@ -168,10 +167,7 @@ function Customers() {
                 <label className="block text-sm font-medium text-gray-700">Address</label>
                 <textarea value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="mt-1 block w-full border rounded px-3 py-2" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Organization ID</label>
-                <input value={formData.orgId} onChange={e => setFormData({ ...formData, orgId: Number(e.target.value) })} className="mt-1 block w-full border rounded px-3 py-2" />
-              </div>
+              
             </div>
 
             <div className="mt-4">
