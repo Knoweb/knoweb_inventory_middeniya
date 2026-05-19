@@ -6,6 +6,7 @@ import {
     Warehouse,
     ShoppingCart,
     Truck,
+    Users,
     Building2,
     Bell,
     BookOpen,
@@ -155,6 +156,10 @@ const Sidebar = () => {
                             <Truck className={iconClass} />
                             <span>Supply Chain</span>
                         </NavLink>
+                        <NavLink to="/customers" className={navLinkClass}>
+                            <Users className={iconClass} />
+                            <span>Customers</span>
+                        </NavLink>
                         <NavLink to="/stock-ledger" className={navLinkClass}>
                             <Box className={iconClass} />
                             <span>Stock Ledger</span>
@@ -219,6 +224,10 @@ const Sidebar = () => {
                         <NavLink to="/suppliers" className={navLinkClass}>
                             <Truck className={iconClass} />
                             <span>Supply Chain</span>
+                        </NavLink>
+                        <NavLink to="/customers" className={navLinkClass}>
+                            <Users className={iconClass} />
+                            <span>Customers</span>
                         </NavLink>
 
                         {industryMenuItems.length > 0 && (

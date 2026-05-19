@@ -111,6 +111,25 @@ services:
       - app-network
     restart: unless-stopped
 
+  customer-service:
+    build:
+      context: ./customer-service
+    image: ${DOCKER_USERNAME}/customer-service:middeniya
+    container_name: middeniya-customer-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/customer_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=knoweb_admin_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery:8761/eureka/
+      - JWT_SECRET=5367566B59703373367639792F423F4528482B4D6251655468576D5A7134743777217A25432A462D4A614E645267556B58703272357538782F413F4428472B4B
+    depends_on:
+      - mysql
+      - service-discovery
+    networks:
+      - app-network
+    restart: unless-stopped
+
   identity-service:
     image: ${DOCKER_USERNAME}/identity-service:middeniya
     container_name: middeniya-identity-service
@@ -215,6 +234,7 @@ services:
       - service-discovery
       - product-service
       - inventory-service
+      - customer-service
     networks:
       - app-network
     restart: unless-stopped

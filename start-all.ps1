@@ -39,6 +39,11 @@ Write-Host "`nStarting Supplier Service on port 8085..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd supplier-service; mvn spring-boot:run"
 Start-Sleep -Seconds 10
 
+# Start Customer Service
+Write-Host "`nStarting Customer Service on port 8088..." -ForegroundColor Cyan
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd customer-service; mvn spring-boot:run"
+Start-Sleep -Seconds 10
+
 # Start User Service
 Write-Host "`nStarting User Service on port 8086..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd user-service; mvn spring-boot:run"
@@ -64,7 +69,7 @@ Write-Host "`nStarting Reporting Service on port 8090..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd reporting-service; mvn spring-boot:run"
 Start-Sleep -Seconds 10
 
-Write-Host "`n✅ All 12 microservices started!" -ForegroundColor Green
+Write-Host "`n✅ All 13 microservices started!" -ForegroundColor Green
 Write-Host "`n================================================" -ForegroundColor Cyan
 Write-Host "SERVICE URLS:" -ForegroundColor Yellow
 Write-Host "================================================" -ForegroundColor Cyan
@@ -75,6 +80,7 @@ Write-Host "Inventory Service:    http://localhost:8082" -ForegroundColor White
 Write-Host "Order Service:        http://localhost:8083" -ForegroundColor White
 Write-Host "Warehouse Service:    http://localhost:8084" -ForegroundColor White
 Write-Host "Supplier Service:     http://localhost:8085" -ForegroundColor White
+Write-Host "Customer Service:     http://localhost:8088" -ForegroundColor White
 Write-Host "User Service:         http://localhost:8086" -ForegroundColor White
 Write-Host "Notification Service: http://localhost:8087" -ForegroundColor White
 Write-Host "Identity Service:     http://localhost:8088" -ForegroundColor White

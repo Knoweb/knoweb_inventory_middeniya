@@ -102,6 +102,13 @@ public class GatewayConfig {
                                                                 .apply(new JwtAuthenticationFilter.Config())))
                                                 .uri("lb://user-service"))
 
+                                // Customer Service
+                                .route("customer-service", r -> r
+                                                .path("/api/customers/**", "/api/customers")
+                                                .filters(f -> f.filter(jwtAuthenticationFilter
+                                                                .apply(new JwtAuthenticationFilter.Config())))
+                                                .uri("lb://customer-service"))
+
                                 // --- GINUMA SERVICE ROUTES (MOVED UP TO PREVENT CONFLICTS) ---
 
                                 // Ginuma Service - Suppliers (Specific to Ginuma)
@@ -144,7 +151,6 @@ public class GatewayConfig {
                                 // conflicts)
                                 .route("ginuma-common", r -> r
                                                 .path("/api/currencies/**", "/api/countries/**",
-                                                                "/api/customers/**",
                                                                 "/api/sales-orders/**", "/api/purchase-orders/**",
                                                                 "/api/projects/**", "/api/items/**",
                                                                 "/api/aged-receivables/**", "/api/aged-payables/**",

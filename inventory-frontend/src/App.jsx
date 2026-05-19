@@ -14,6 +14,7 @@ import Inventory from './pages/Inventory';
 import Orders from './pages/Orders';
 import Warehouses from './pages/Warehouses';
 import Suppliers from './pages/Suppliers';
+import Customers from './pages/Customers';
 import Retail from './pages/Retail';
 import Manufacturing from './pages/Manufacturing';
 import IndustryConfig from './pages/IndustryConfig';
@@ -62,6 +63,7 @@ function AppContent() {
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/warehouses" element={<Warehouses />} />
                   <Route path="/suppliers" element={<Suppliers />} />
+                  <Route path="/customers" element={<Customers />} />
                   <Route path="/retail" element={<Retail />} />
                   <Route path="/manufacturing" element={<Manufacturing />} />
                   <Route path="/industry-config" element={<IndustryConfig />} />
