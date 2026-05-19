@@ -23,6 +23,7 @@ jobs:
           - inventory-service
           - order-service
           - warehouse-service
+          - customer-service
           - supplier-service
           - user-service
           - notification-service
