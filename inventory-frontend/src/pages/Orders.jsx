@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import apiClient, { orderService, supplierService, productService, warehouseService } from '../services/api';
+import apiClient, { orderService, supplierService, productService, warehouseService, customerService } from '../services/api';
 import { useNotification } from '../context/NotificationContext';
 import PurchaseOrdersTable from '../components/PurchaseOrdersTable';
 import { ShoppingCart, DollarSign, X, Plus, Package, MessageSquare, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Layers, TrendingUp, Trash2 } from 'lucide-react';
@@ -264,6 +264,9 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
   const [productsLoading, setProductsLoading] = useState(true);
   const [availableWarehouses, setAvailableWarehouses] = useState([]);
   const [warehousesLoading, setWarehousesLoading] = useState(true);
+  const [customers, setCustomers] = useState([]);
+  const [customersLoading, setCustomersLoading] = useState(true);
+  const [customerMode, setCustomerMode] = useState('select'); // 'select' or 'manual'
   const [form, setForm] = useState(INIT_SO);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -296,6 +299,28 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
       })
       .catch(err => console.error('Failed to load warehouses:', err))
       .finally(() => setWarehousesLoading(false));
+
+    // fetch customers for dropdown
+    setCustomersLoading(true);
+    if (orgId) {
+      customerService.getByOrganization(orgId)
+        .then(res => {
+          const data = res.data;
+          const list = Array.isArray(data) ? data : (data?.content ?? data?.data ?? []);
+          setCustomers(list);
+        })
+        .catch(err => console.error('Failed to load customers:', err))
+        .finally(() => setCustomersLoading(false));
+    } else {
+      customerService.getAll()
+        .then(res => {
+          const data = res.data;
+          const list = Array.isArray(data) ? data : (data?.content ?? data?.data ?? []);
+          setCustomers(list);
+        })
+        .catch(err => console.error('Failed to load customers:', err))
+        .finally(() => setCustomersLoading(false));
+    }
   }, []);
 
   const updateItem = (idx, field, value) => {
@@ -384,7 +409,37 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Customer Entity *</label>
-              <input type="text" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all" placeholder="e.g. Acme Corp Overseas" value={form.customerName} onChange={e => setForm(p => ({ ...p, customerName: e.target.value }))} required />
+              <div className="flex gap-3 items-center">
+                <select
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all"
+                  value={customerMode === 'manual' ? '__manual__' : (customers.find(c => (c.customerName || c.name) === form.customerName)?.id || '')}
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (v === '__manual__') {
+                      setCustomerMode('manual');
+                      setForm(p => ({ ...p, customerName: '' }));
+                      return;
+                    }
+                    setCustomerMode('select');
+                    if (!v) {
+                      setForm(p => ({ ...p, customerName: '' }));
+                      return;
+                    }
+                    const sel = customers.find(c => String(c.id) === String(v));
+                    setForm(p => ({ ...p, customerName: sel ? (sel.customerName || sel.name) : '' }));
+                  }}
+                >
+                  <option value="">{customersLoading ? '⏳ Loading customers…' : '— Select customer —'}</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.customerName || c.name}</option>
+                  ))}
+                  <option value="__manual__">— Manual entry —</option>
+                </select>
+              </div>
+
+              {customerMode === 'manual' && (
+                <input type="text" className="w-full mt-3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all" placeholder="Enter customer name manually" value={form.customerName} onChange={e => setForm(p => ({ ...p, customerName: e.target.value }))} required />
+              )}
             </div>
 
             <div className="space-y-1.5">
