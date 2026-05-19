@@ -38,7 +38,15 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<Customer> createCustomer(@RequestBody Customer customer) {
+    public ResponseEntity<Customer> createCustomer(@RequestBody CustomerRequestDto dto,
+                                                   @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        Customer customer = new Customer();
+        customer.setCustomerName(dto.getCustomerName());
+        customer.setVatNumber(dto.getVatNumber());
+        customer.setPhoneNumber(dto.getPhoneNumber());
+        customer.setAddress(dto.getAddress());
+        customer.setContactInfo(dto.getContactInfo());
+        customer.setOrgId(dto.getOrgId() != null ? dto.getOrgId() : orgId);
         return ResponseEntity.status(HttpStatus.CREATED).body(customerService.createCustomer(customer));
     }
 

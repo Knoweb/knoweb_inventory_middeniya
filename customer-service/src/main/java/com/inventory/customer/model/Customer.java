@@ -24,8 +24,11 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
+    @Column(name = "name", nullable = false)
+    private String customerName;
+
+    @Column(name = "vat_number")
+    private String vatNumber;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "contact_info", columnDefinition = "json")
@@ -33,6 +36,12 @@ public class Customer {
 
     @Column(name = "org_id", nullable = false)
     private Long orgId;
+
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(name = "address", columnDefinition = "text")
+    private String address;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

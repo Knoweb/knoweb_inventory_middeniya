@@ -34,8 +34,17 @@ public class CustomerService {
     public Customer updateCustomer(Long id, CustomerRequestDto dto) {
         return customerRepository.findById(id)
                 .map(existing -> {
-                    if (dto.getName() != null) {
-                        existing.setName(dto.getName());
+                    if (dto.getCustomerName() != null) {
+                        existing.setCustomerName(dto.getCustomerName());
+                    }
+                    if (dto.getVatNumber() != null) {
+                        existing.setVatNumber(dto.getVatNumber());
+                    }
+                    if (dto.getPhoneNumber() != null) {
+                        existing.setPhoneNumber(dto.getPhoneNumber());
+                    }
+                    if (dto.getAddress() != null) {
+                        existing.setAddress(dto.getAddress());
                     }
                     if (dto.getContactInfo() != null) {
                         existing.setContactInfo(dto.getContactInfo());
