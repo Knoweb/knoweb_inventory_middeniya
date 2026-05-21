@@ -649,6 +649,11 @@ function Orders() {
     return p ? p.name : `Product #${productId}`;
   };
 
+  const getSalesItemName = (item) => {
+    if (!item) return 'Product';
+    return item.description || getProductName(item.externalItemId) || `Item #${item.externalItemId ?? item.id ?? ''}`;
+  };
+
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     setActionError('');
@@ -842,12 +847,14 @@ function Orders() {
               <div className="flex justify-between items-start">
                 <h2 className="text-2xl font-black flex items-center gap-3">
                   <ShoppingCart size={32} />
-                  Order Details
+                  {viewOrder.soNumber ? 'Sales Order Details' : 'Purchase Order Details'}
                 </h2>
                 <button onClick={() => setViewOrder(null)} className="text-white/60 hover:text-white transition-colors"><X size={28} /></button>
               </div>
               <div className="mt-4 flex gap-4 items-center">
-                <span className="text-xs font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full border border-white/20 shadow-sm">Ref ID: #PO-{String(viewOrder.id).padStart(3, '0')}</span>
+                <span className="text-xs font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full border border-white/20 shadow-sm">
+                  Ref ID: {viewOrder.soNumber ? `#${viewOrder.soNumber}` : `#PO-${String(viewOrder.id).padStart(3, '0')}`}
+                </span>
                 <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Created: {new Date(viewOrder.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
@@ -869,10 +876,24 @@ function Orders() {
                   })()}
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Contract Valuation</label>
-                  <div className="text-xl font-black text-slate-800 tracking-tight">Rs.{Number(viewOrder.totalAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{viewOrder.soNumber ? 'Order Valuation' : 'Contract Valuation'}</label>
+                  <div className="text-xl font-black text-slate-800 tracking-tight">
+                    Rs.{Number(viewOrder.totalAmount ?? viewOrder.total ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
                 </div>
               </div>
+
+              {viewOrder.customerName && (
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="p-3 bg-white rounded-lg shadow-sm text-indigo-500"><Package size={20} /></div>
+                    <div className="flex-1">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Customer Entity</span>
+                      <span className="text-sm font-bold text-slate-700">{viewOrder.customerName}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -890,14 +911,14 @@ function Orders() {
                   <div className="bg-slate-50 p-3 grid grid-cols-3 gap-2 font-black text-slate-500 uppercase tracking-tighter shadow-inner">
                     <span>Product</span>
                     <span className="text-center">Qty</span>
-                    <span className="text-right">Settlement</span>
+                    <span className="text-right">{viewOrder.soNumber ? 'Amount' : 'Settlement'}</span>
                   </div>
                   <div className="divide-y divide-slate-50">
                     {viewOrder.items?.map((item, i) => (
                       <div key={i} className="p-3 grid grid-cols-3 gap-2 font-bold text-slate-600 hover:bg-slate-50 transition-colors">
-                        <span className="truncate">{getProductName(item.productId)}</span>
+                        <span className="truncate">{getSalesItemName(item)}</span>
                         <span className="text-center">{item.quantity}</span>
-                        <span className="text-right text-indigo-600">Rs.{Number(item.unitPrice).toFixed(2)}</span>
+                        <span className="text-right text-indigo-600">Rs.{Number(item.amount ?? item.unitPrice ?? 0).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -1054,7 +1075,7 @@ function Orders() {
                                 </button>
                               )}
                               <button onClick={() => confirmDelete(order, 'SO')} className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-all" title="Purge Record"><Trash2 size={16} /></button>
-                              <button className="p-2 bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>
+                              <button onClick={() => setViewOrder(order)} className="p-2 bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>
                             </div>
                           </td>
                         </tr>
