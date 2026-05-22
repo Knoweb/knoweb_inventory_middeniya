@@ -646,13 +646,26 @@ function Orders() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const getProductName = (productId) => {
+    if (productId === undefined || productId === null || productId === '') return null;
     const p = products.find(p => String(p.id) === String(productId));
     return p ? p.name : `Product #${productId}`;
   };
 
   const getSalesItemName = (item) => {
-    if (!item) return 'Product';
-    return item.description || getProductName(item.externalItemId) || `Item #${item.externalItemId ?? item.id ?? ''}`;
+    if (!item) return 'Unknown Product';
+    if (item.description) return item.description;
+
+    // Try externalItemId first (if present), then productId, then any direct name fields.
+    const externalName = getProductName(item.externalItemId);
+    if (externalName) return externalName;
+
+    const productName = getProductName(item.productId);
+    if (productName) return productName;
+
+    if (item.productName) return item.productName;
+
+    const idLabel = item.externalItemId ?? item.productId ?? item.id;
+    return idLabel ? `Item #${idLabel}` : 'Unknown Product';
   };
 
   const fetchOrders = useCallback(async () => {
