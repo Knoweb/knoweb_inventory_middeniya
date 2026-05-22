@@ -843,14 +843,14 @@ function Orders() {
       {viewOrder && (
         <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setViewOrder(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="bg-indigo-600 px-8 py-8 text-white">
-              <div className="flex justify-between items-start">
-                <h2 className="text-2xl font-black flex items-center gap-3">
-                  <ShoppingCart size={32} />
-                  {viewOrder.soNumber ? 'Sales Order Details' : 'Purchase Order Details'}
-                </h2>
-                <button onClick={() => setViewOrder(null)} className="text-white/60 hover:text-white transition-colors"><X size={28} /></button>
-              </div>
+            <div className={`px-8 py-8 text-white ${viewOrder.soNumber ? 'bg-emerald-600' : 'bg-indigo-600'}`}>
+                <div className="flex justify-between items-start">
+                  <h2 className="text-2xl font-black flex items-center gap-3">
+                    <ShoppingCart size={32} />
+                    {viewOrder.soNumber ? 'Sales Orders Details' : 'Purchase Order Details'}
+                  </h2>
+                  <button onClick={() => setViewOrder(null)} className="text-white/60 hover:text-white transition-colors"><X size={28} /></button>
+                </div>
               <div className="mt-4 flex gap-4 items-center">
                 <span className="text-xs font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full border border-white/20 shadow-sm">
                   Ref ID: {viewOrder.soNumber ? `#${viewOrder.soNumber}` : `#PO-${String(viewOrder.id).padStart(3, '0')}`}
@@ -886,7 +886,7 @@ function Orders() {
               {viewOrder.customerName && (
                 <div className="grid grid-cols-1 gap-4">
                   <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <div className="p-3 bg-white rounded-lg shadow-sm text-indigo-500"><Package size={20} /></div>
+                    <div className={viewOrder.soNumber ? "p-3 bg-white rounded-lg shadow-sm text-emerald-500" : "p-3 bg-white rounded-lg shadow-sm text-indigo-500"}><Package size={20} /></div>
                     <div className="flex-1">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Customer Entity</span>
                       <span className="text-sm font-bold text-slate-700">{viewOrder.customerName}</span>
@@ -897,7 +897,7 @@ function Orders() {
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <div className="p-3 bg-white rounded-lg shadow-sm text-indigo-500"><Layers size={20} /></div>
+                  <div className={viewOrder.soNumber ? "p-3 bg-white rounded-lg shadow-sm text-emerald-500" : "p-3 bg-white rounded-lg shadow-sm text-indigo-500"}><Layers size={20} /></div>
                   <div className="flex-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Resource Composition</span>
                     <span className="text-sm font-bold text-slate-700">{viewOrder.items?.length ?? 0} Distinct Line Items</span>
@@ -918,7 +918,7 @@ function Orders() {
                       <div key={i} className="p-3 grid grid-cols-3 gap-2 font-bold text-slate-600 hover:bg-slate-50 transition-colors">
                         <span className="truncate">{getSalesItemName(item)}</span>
                         <span className="text-center">{item.quantity}</span>
-                        <span className="text-right text-indigo-600">Rs.{Number(item.amount ?? item.unitPrice ?? 0).toFixed(2)}</span>
+                        <span className={`text-right ${viewOrder.soNumber ? 'text-emerald-600' : 'text-indigo-600'}`}>Rs.{Number(item.amount ?? item.unitPrice ?? 0).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -1075,7 +1075,7 @@ function Orders() {
                                 </button>
                               )}
                               <button onClick={() => confirmDelete(order, 'SO')} className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg transition-all" title="Purge Record"><Trash2 size={16} /></button>
-                              <button onClick={() => setViewOrder(order)} className="p-2 bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>
+                              <button onClick={() => setViewOrder(order)} className="p-2 bg-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg transition-all" title="View Detail"><MessageSquare size={16} /></button>
                             </div>
                           </td>
                         </tr>
