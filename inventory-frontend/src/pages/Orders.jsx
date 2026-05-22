@@ -518,6 +518,7 @@ function ReturnOrderModal({ order, products, onClose, onReturned }) {
   });
 
   const getProductName = (id) => {
+    if (id === undefined || id === null || id === '') return 'Unknown Product';
     const p = products.find(p => String(p.id) === String(id));
     return p ? p.name : `Product #${id}`;
   };
@@ -666,6 +667,16 @@ function Orders() {
 
     const idLabel = item.externalItemId ?? item.productId ?? item.id;
     return idLabel ? `Item #${idLabel}` : 'Unknown Product';
+  };
+
+  const getSalesItemLabel = (item) => {
+    const name = getSalesItemName(item);
+    const idLabel = item?.productId ?? item?.externalItemId ?? item?.id;
+    if (name && name !== 'Unknown Product' && !name.startsWith('Item #')) {
+      return idLabel ? `${name} — #${idLabel}` : name;
+    }
+    if (idLabel) return `Product #${idLabel}`;
+    return 'Unknown Product';
   };
 
   const fetchOrders = useCallback(async () => {
@@ -931,7 +942,7 @@ function Orders() {
                   <div className="divide-y divide-slate-50">
                     {viewOrder.items?.map((item, i) => (
                       <div key={i} className="p-3 grid grid-cols-3 gap-2 font-bold text-slate-600 hover:bg-slate-50 transition-colors">
-                        <span className="truncate">{getSalesItemName(item)}</span>
+                        <span className="truncate">{getSalesItemLabel(item)}</span>
                         <span className="text-center">{item.quantity}</span>
                         <span className={`text-right ${viewOrderType === 'SO' ? 'text-emerald-600' : 'text-indigo-600'}`}>Rs.{Number(item.amount ?? item.unitPrice ?? 0).toFixed(2)}</span>
                       </div>
