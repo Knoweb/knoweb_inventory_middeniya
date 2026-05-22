@@ -847,7 +847,7 @@ function Orders() {
                 <div className="flex justify-between items-start">
                   <h2 className="text-2xl font-black flex items-center gap-3">
                     <ShoppingCart size={32} />
-                    {viewOrder.soNumber ? 'Sales Orders Details' : 'Purchase Order Details'}
+                    {viewOrder.soNumber ? 'Sales Order Details' : 'Purchase Order Details'}
                   </h2>
                   <button onClick={() => setViewOrder(null)} className="text-white/60 hover:text-white transition-colors"><X size={28} /></button>
                 </div>
